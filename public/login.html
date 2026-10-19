@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sign in · Laytime Calculator</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body>
+    <main class="login">
+      <section class="panel">
+        <h1>Laytime Calculator</h1>
+        <p class="hint">Sign in with the account your administrator created for you.</p>
+        <form class="stack" id="loginForm" novalidate>
+          <label class="f">Email<input id="email" type="email" autocomplete="username" required /></label>
+          <label class="f"
+            >Password<input id="password" type="password" autocomplete="current-password" required
+          /></label>
+          <button class="primary" type="submit" id="loginBtn">Sign in</button>
+          <div class="msg bad" id="loginMsg" role="alert"></div>
+        </form>
+      </section>
+    </main>
+    <script src="/js/login.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# secrets: copy .env.example to .env and never commit it
+.env
+.env.*
+!.env.example
+
+# logs and OS / editor clutter
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/
+coverage/

@@ -1,0 +1,16 @@
+node_modules
+.env
+.env.*
+.git
+.github
+test
+*.log
+*.md
+.DS_Store
+.vscode
+.idea
+.prettierrc.json
+.prettierignore
+.editorconfig
+.nvmrc
+eslint.config.js
