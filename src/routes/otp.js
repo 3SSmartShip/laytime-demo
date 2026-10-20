@@ -98,9 +98,10 @@ router.post('/contact/verify', requireAuth, verifyLimiter, async (req, res, next
   try {
     const b = contactBody.extend({ code: z.string().max(12) }).parse(req.body);
     const t = contactTarget(b);
+    // Checked outside the transaction so a wrong code still counts as an attempt.
+    const r = await Otp.check({ query }, { userId: req.user.id, purpose: t.purpose, target: t.value, code: b.code });
+    if (!r.ok) throw httpError(400, r.error);
     await tx(async db => {
-      const r = await Otp.check(db, { userId: req.user.id, purpose: t.purpose, target: t.value, code: b.code });
-      if (!r.ok) throw httpError(400, r.error);
       await db.query(`UPDATE users SET ${b.kind} = $1 WHERE id = $2`, [t.value, req.user.id]);
       await audit(db, { tenantId: req.user.tenant_id, userId: req.user.id, action: `${b.kind}_verified` });
     });
@@ -117,3 +118,4 @@ router.post('/contact/remove', requireAuth, async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.limiters = { request: reqLimiter, verify: verifyLimiter }; // tests reset these

@@ -114,16 +114,19 @@ if (!url) {
   });
 
   test('only the organisation that created a stakeholder login can reset its password', async () => {
+    const pA = (await opA.req('GET', `/api/v/${vidA}`)).body.participants.find(p => p.login_id === 'master.vnidhi');
+    const rs = await opA.req('POST', `/api/v/${vidA}/participants/${pA.id}/reset`, { password: 'reset-password-1' });
+    assert.strictEqual(rs.status, 200, 'the creator can reset while the login is only used on its voyages');
+    assert.strictEqual((await new Client().login('master.vnidhi', 'reset-password-1')).status, 200);
     const add = await opB.req('POST', `/api/v/${vidB}/participants/existing`, { loginId: 'MASTER.vnidhi', party: 'master' });
     assert.strictEqual(add.status, 201, 'another operator can add an existing stakeholder by login ID');
     const pB = (await opB.req('GET', `/api/v/${vidB}`)).body.participants.find(p => p.login_id === 'master.vnidhi');
     assert.strictEqual(pB.can_reset, false);
     assert.strictEqual((await opB.req('POST', `/api/v/${vidB}/participants/${pB.id}/reset`, { password: 'hijack-password' })).status, 403);
     assert.strictEqual((await opB.req('POST', `/api/v/${vidB}/participants/existing`, { loginId: 'meera', party: 'agent' })).status, 404, 'organisation users cannot be pulled in as stakeholders');
-    const pA = (await opA.req('GET', `/api/v/${vidA}`)).body.participants.find(p => p.login_id === 'master.vnidhi');
-    const rs = await opA.req('POST', `/api/v/${vidA}/participants/${pA.id}/reset`, { password: 'reset-password-1' });
-    assert.strictEqual(rs.status, 200);
-    assert.strictEqual((await new Client().login('master.vnidhi', 'reset-password-1')).status, 200);
+    const takeover = await opA.req('POST', `/api/v/${vidA}/participants/${pA.id}/reset`, { password: 'takeover-password' });
+    assert.strictEqual(takeover.status, 403, 'once the login works on Beta voyages, Alpha cannot reset it and sign in as them');
+    assert.strictEqual((await new Client().login('master.vnidhi', 'takeover-password')).status, 401);
   });
 
   test('stakeholders who accept an email invite choose their own login ID', async () => {

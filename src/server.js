@@ -62,8 +62,20 @@ function createApp() {
 async function start() {
   await migrate();
   await seed();
+  const { recoverInterrupted } = require('./extract');
+  await recoverInterrupted();
+  setInterval(() => recoverInterrupted().catch(e => console.error('recover', e)), 5 * 60 * 1000).unref();
   const app = createApp();
-  app.listen(config.port, () => console.log(`laytime app listening on :${config.port}`));
+  const server = app.listen(config.port, () => console.log(`laytime app listening on :${config.port}`));
+
+  // Hosts (Railway, Docker) send SIGTERM on redeploy: finish open requests, then close the pool.
+  const shutdown = signal => {
+    console.log(`${signal} received, shutting down`);
+    server.close(() => pool.end().finally(() => process.exit(0)));
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 }
 
 module.exports = { createApp };

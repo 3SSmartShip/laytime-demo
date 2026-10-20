@@ -34,16 +34,19 @@ async function check(db, { userId, purpose, target, code }) {
   const o = rows[0];
   const bad = { ok: false, error: 'That code is not correct or has expired. Ask for a new one.' };
   if (!o || (target && o.target.toLowerCase() !== String(target).toLowerCase())) return bad;
-  if (o.attempts >= MAX_ATTEMPTS) return { ok: false, error: 'Too many wrong codes. Ask for a new one.' };
+  // Count the try before comparing, in one statement, so parallel guesses cannot exceed the limit.
+  // Callers must not run this inside a transaction that rolls back on a wrong code.
+  const { rows: [tried] } = await db.query(
+    'UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1 AND attempts < $2 AND consumed_at IS NULL RETURNING attempts', [o.id, MAX_ATTEMPTS]);
+  if (!tried) return { ok: false, error: 'Too many wrong codes. Ask for a new one.' };
   const given = String(code || '').replace(/\D/g, '');
   const a = Buffer.from(hash(o.id, given), 'hex'), b = Buffer.from(o.code_hash, 'hex');
   if (given.length !== 6 || !crypto.timingSafeEqual(a, b)) {
-    await db.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1', [o.id]);
-    const left = MAX_ATTEMPTS - o.attempts - 1;
+    const left = MAX_ATTEMPTS - tried.attempts;
     return { ok: false, error: left > 0 ? `That code is not correct. ${left} attempt${left === 1 ? '' : 's'} left.` : 'Too many wrong codes. Ask for a new one.' };
   }
-  await db.query('UPDATE otp_codes SET consumed_at = now() WHERE id = $1', [o.id]);
-  return { ok: true };
+  const used = await db.query('UPDATE otp_codes SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL', [o.id]);
+  return used.rowCount ? { ok: true } : bad;
 }
 
 module.exports = { issue, check, RESEND_SECONDS };

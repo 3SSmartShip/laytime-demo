@@ -2,6 +2,9 @@
 // PDFs, scans and Word files need the Luma provider.
 const ExcelJS = require('exceljs');
 const Codes = require('../../shared/codes');
+const { assertSafeZip } = require('./zipguard');
+
+const MAX_LINES = 20000;
 
 const pad = n => String(n).padStart(2, '0');
 const STOP_WORDS = /\b(stop|stopp|suspend|ntc|not to count|delay|await|waiting|break ?down|idle|rain|shower|swell|humid|shift|draft|draught|strike|no cargo|shortage)/i;
@@ -16,17 +19,19 @@ function cellText(v) {
 async function toLines(buffer, filename) {
   const ext = (filename.split('.').pop() || '').toLowerCase();
   if (ext === 'xlsx') {
+    assertSafeZip(buffer);
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer);
     const lines = [];
     wb.eachSheet(ws => ws.eachRow(row => {
+      if (lines.length >= MAX_LINES) return;
       const cells = [];
       row.eachCell({ includeEmpty: false }, c => { const t = cellText(c.value).trim(); if (t) cells.push(t); });
       if (cells.length) lines.push(cells.join(' '));
     }));
     return lines;
   }
-  if (['csv', 'txt', 'tsv', 'text'].includes(ext)) return buffer.toString('utf8').split(/\r?\n/).map(l => l.replace(/[,;\t]+/g, ' ').trim()).filter(Boolean);
+  if (['csv', 'txt', 'tsv', 'text'].includes(ext)) return buffer.toString('utf8').split(/\r?\n/, MAX_LINES).map(l => l.replace(/[,;\t]+/g, ' ').trim()).filter(Boolean);
   const err = new Error('The built-in reader handles Excel, CSV and text. Connect Luma to read PDFs, scans and Word files.');
   err.unsupported = true;
   throw err;

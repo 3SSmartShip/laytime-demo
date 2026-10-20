@@ -162,6 +162,22 @@ if (!url) {
     assert.strictEqual(taken.status, 409, 'cannot claim someone else\'s number');
   });
 
+  test('verifying a new contact allows five tries, then the code is dead', async () => {
+    // earlier tests used up this IP's code requests; start a fresh window
+    const { limiters } = require('../src/routes/otp');
+    for (const ip of ['127.0.0.1', '::ffff:127.0.0.1', '::1']) { limiters.request.resetKey(ip); limiters.verify.resetKey(ip); }
+    const c = new Client(); await c.login('meera', 'meera-own-password');
+    assert.strictEqual((await c.req('POST', '/api/auth/otp/contact/request', { kind: 'email', value: 'meera@op.test' })).status, 200);
+    const code = lastCode('meera@op.test'), bad = code === '000000' ? '111111' : '000000';
+    const msgs = [];
+    for (let i = 0; i < 5; i++) msgs.push((await c.req('POST', '/api/auth/otp/contact/verify', { kind: 'email', value: 'meera@op.test', code: bad })).body.error);
+    assert.match(msgs[0], /4 attempts left/);
+    assert.match(msgs[3], /1 attempt left/);
+    const right = await c.req('POST', '/api/auth/otp/contact/verify', { kind: 'email', value: 'meera@op.test', code });
+    assert.strictEqual(right.status, 400);
+    assert.match(right.body.error, /Too many/);
+  });
+
   // ---------- permissions ----------
   const setPerm = (role, module, enabled, scope = 'default') => root.req('PUT', `/api/admin/permissions?scope=${scope}`, { role, module, enabled });
 

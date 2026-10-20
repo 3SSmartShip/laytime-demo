@@ -33,4 +33,26 @@ async function processDocument(docId) {
   }
 }
 
-module.exports = { processDocument, provider };
+// Reading is CPU- and memory-heavy: at most two documents at a time, the rest wait their turn.
+const MAX_RUNNING = 2;
+let running = 0;
+const waiting = [];
+function pump() {
+  while (running < MAX_RUNNING && waiting.length) {
+    const docId = waiting.shift();
+    running++;
+    processDocument(docId).catch(e => console.error('extract', e)).finally(() => { running--; pump(); });
+  }
+}
+function enqueue(docId) { waiting.push(docId); pump(); }
+
+// A document still "processing" long after any provider would have timed out was cut off by a
+// crash or redeploy. Mark it so the uploader can retry. Safe with several app instances.
+async function recoverInterrupted() {
+  const { rowCount } = await query(
+    `UPDATE documents SET status = 'failed', error = 'Reading was interrupted. Use Retry to read it again.', updated_at = now()
+      WHERE status IN ('uploaded', 'processing') AND updated_at < now() - interval '10 minutes'`);
+  if (rowCount) console.log(`marked ${rowCount} interrupted document(s) for retry`);
+}
+
+module.exports = { processDocument, provider, enqueue, recoverInterrupted };

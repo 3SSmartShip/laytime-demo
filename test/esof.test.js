@@ -206,6 +206,23 @@ if (!url) {
     assert.match(d.error, /Luma/);
   });
 
+  test('an Excel zip bomb is refused and the server keeps working', async () => {
+    const { zipOf } = require('./helpers/zip');
+    const bomb = zipOf('xl/worksheets/sheet1.xml', Buffer.alloc(40 * 1024 * 1024, 0x41));
+    const up = await agent.req('POST', `/api/v/${vid}/documents`, bomb, { 'X-Filename': 'sof.xlsx', 'X-Port-Id': portDP });
+    assert.strictEqual(up.status, 201);
+    const d = await waitDoc(agent, vid, up.body.id);
+    assert.strictEqual(d.status, 'failed');
+    assert.match(d.error, /too large/);
+    assert.strictEqual((await agent.req('GET', `/api/v/${vid}`)).status, 200);
+  });
+
+  test('people outside the voyage cannot upload to it', async () => {
+    const outsider = new Client(); await outsider.login('oth@other.test', 'oth-password-1');
+    const r = await outsider.req('POST', `/api/v/${vid}/documents`, Buffer.from('a,b'), { 'X-Filename': 'x.csv' });
+    assert.strictEqual(r.status, 404);
+  });
+
   test('Luma provider: sends the file, normalises the answer, applies terms', async () => {
     process.env.LUMA_API_URL = `http://127.0.0.1:${luma.address().port}/extract`;
     process.env.LUMA_API_KEY = 'test-key';
@@ -221,6 +238,10 @@ if (!url) {
     assert.strictEqual(d.result.events[0].at, '2013-09-13T08:05');
     assert.ok(d.result.warnings.some(w => /no start time/.test(w)));
     assert.deepStrictEqual(d.result.terms, { demRate: '7000', hd: true, qty: '36010.25', rate: '6000', turn: '24', terms: 'SATPM SHEX' });
+    const seenByAgent = (await agent.req('GET', `/api/v/${vid}`)).body.documents.find(x => x.id === d.id);
+    assert.ok(seenByAgent, 'agents still see the SOF document');
+    assert.strictEqual(seenByAgent.result.terms, undefined, 'but not the rates read from it');
+    assert.strictEqual((await owner.req('GET', `/api/v/${vid}`)).body.documents.find(x => x.id === d.id).result.terms.demRate, '7000');
     const cur = (await op.req('GET', `/api/voyages/${vid}`)).body.voyage;
     const ap = await op.req('POST', `/api/v/${vid}/documents/${d.id}/apply`, { events: [2], terms: true });
     assert.strictEqual(ap.body.added, 1);

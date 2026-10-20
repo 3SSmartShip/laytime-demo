@@ -1,5 +1,14 @@
 const isProd = process.env.NODE_ENV === 'production';
 
+// Express reads a number as "trust this many proxy hops" but a string as a list of proxy IPs,
+// so the env value "1" has to become the number 1.
+function parseTrustProxy(v) {
+  if (!v) return false;
+  if (/^\d+$/.test(v)) return parseInt(v, 10);
+  if (v === 'true') return true;
+  return v;
+}
+
 const config = {
   isProd,
   port: parseInt(process.env.PORT || '3000', 10),
@@ -7,7 +16,7 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || (isProd ? '' : 'dev-only-secret-change-me'),
   sessionHours: parseInt(process.env.SESSION_HOURS || '12', 10),
   cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : isProd,
-  trustProxy: process.env.TRUST_PROXY || (isProd ? '1' : ''),
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY || (isProd ? '1' : '')),
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminLogin: process.env.ADMIN_LOGIN || 'admin',
   adminPassword: process.env.ADMIN_PASSWORD || '',
@@ -19,3 +28,4 @@ if (isProd && (!config.jwtSecret || config.jwtSecret.length < 32)) {
 }
 
 module.exports = config;
+module.exports.parseTrustProxy = parseTrustProxy;

@@ -7,7 +7,7 @@ const { httpError } = require('../auth');
 const { voyageAccess, redact, COMMERCIAL_DEFAULT } = require('../access');
 const { loadEvents, refreshSummary } = require('../esof');
 const { parseVoyage } = require('../voyageData');
-const { processDocument, provider } = require('../extract');
+const { enqueue, provider } = require('../extract');
 const Codes = require('../../shared/codes');
 const Engine = require('../../shared/engine');
 const bcrypt = require('bcryptjs');
@@ -33,6 +33,12 @@ async function access(req, module) {
   return req.access;
 }
 function portIds(a) { return new Set((a.voyage.data.ports || []).map(p => p.id)); }
+// Terms read from any document (rates, quantities, laytime terms) are commercial.
+function withoutTerms(result) {
+  if (!result || !result.terms) return result;
+  const { terms, ...rest } = result; // eslint-disable-line no-unused-vars
+  return rest;
+}
 
 // ---------- voyage view ----------
 router.get('/', wrap(async (req, res) => {
@@ -51,7 +57,7 @@ router.get('/', wrap(async (req, res) => {
       recordable: [...Codes.MILESTONES, ...Codes.STOPPAGES].map(c => c.code).filter(c => a.canRecord(c)), provider: provider() },
     voyage: { id: v.id, vessel: v.vessel, status: v.status, version: v.version, operator: v.tenant_name, data: a.commercial ? v.data : redact(v.data), summary: a.commercial ? v.summary : null },
     events: !a.perms.sof_view ? [] : events.map(e => { const o = { ...e, mine: e.author_id === req.user.id }; delete o.author_id; return o; }), participants: parts.rows.map(p => a.manage && a.perms.stakeholders ? p : { id: p.id, party_role: p.party_role, name: p.name, company: p.company }), invites,
-    documents: !a.perms.documents ? [] : docs.rows.filter(d => a.commercial || d.doc_type !== 'cp').map(d => ({ ...d, mine: d.uploaded_by === req.user.id, uploaded_by: undefined })),
+    documents: !a.perms.documents ? [] : docs.rows.filter(d => a.commercial || d.doc_type !== 'cp').map(d => ({ ...d, result: a.commercial ? d.result : withoutTerms(d.result), mine: d.uploaded_by === req.user.id, uploaded_by: undefined })),
   });
 }));
 
@@ -268,6 +274,10 @@ router.post('/participants/:pid/reset', wrap(async (req, res) => {
   const u = rows[0];
   if (!u) throw httpError(404, 'Not found.');
   if (u.created_by_tenant !== a.voyage.tenant_id) throw httpError(403, 'This login was created by another organisation. The person can change their own password, or ask whoever created it.');
+  // Otherwise the creator could set a password, sign in as the person and read the other organisation's voyages.
+  const { rows: elsewhere } = await query(
+    `SELECT 1 FROM voyage_participants p JOIN voyages v ON v.id = p.voyage_id WHERE p.user_id = $1 AND v.tenant_id <> $2 LIMIT 1`, [u.id, a.voyage.tenant_id]);
+  if (elsewhere[0]) throw httpError(403, 'This login is also used on another organisation\'s voyages, so only the person can change its password: from Account, or by signing in with a code.');
   await query('UPDATE users SET password_hash = $1, must_change_password = true WHERE id = $2', [await bcrypt.hash(b.password, 12), u.id]);
   await audit({ query }, { tenantId: a.voyage.tenant_id, userId: req.user.id, voyageId: a.voyage.id, action: 'participant_password_reset', detail: { loginId: u.login_id } });
   res.json({ loginId: u.login_id });
@@ -305,8 +315,11 @@ router.delete('/invites/:iid', wrap(async (req, res) => {
 const MIME = { pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
   csv: 'text/csv', txt: 'text/plain', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 
-router.post('/documents', express.raw({ type: () => true, limit: '15mb' }), wrap(async (req, res) => {
-  const a = await access(req, 'documents');
+// Access is checked before the body is read, so outsiders cannot make the server buffer 15 MB.
+const documentsAccess = (req, res, next) => access(req, 'documents').then(() => next(), next);
+
+router.post('/documents', documentsAccess, express.raw({ type: () => true, limit: '15mb' }), wrap(async (req, res) => {
+  const a = req.access;
   const filename = decodeURIComponent(req.get('X-Filename') || '').replace(/[\\/\r\n"]/g, '_').slice(0, 200);
   const ext = (filename.split('.').pop() || '').toLowerCase();
   if (!filename || !MIME[ext]) throw httpError(400, 'Upload a PDF, Excel, Word, CSV, text or image file.');
@@ -319,7 +332,7 @@ router.post('/documents', express.raw({ type: () => true, limit: '15mb' }), wrap
     `INSERT INTO documents (voyage_id, port_id, uploaded_by, filename, mime, size, sha256, content, doc_type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
     [a.voyage.id, portId, req.user.id, filename, MIME[ext], req.body.length, crypto.createHash('sha256').update(req.body).digest('hex'), req.body, docType]);
   await audit({ query }, { tenantId: a.voyage.tenant_id, userId: req.user.id, voyageId: a.voyage.id, action: 'document_uploaded', detail: { filename, docType } });
-  setImmediate(() => processDocument(rows[0].id).catch(e => console.error('extract', e)));
+  enqueue(rows[0].id);
   res.status(201).json({ id: rows[0].id });
 }));
 
@@ -343,7 +356,8 @@ router.post('/documents/:did/retry', wrap(async (req, res) => {
   const a = await access(req, 'documents');
   const d = await loadDoc(a, req.params.did);
   if (!a.manage && d.uploaded_by !== req.user.id) throw httpError(403, 'Only the uploader or the operator can retry.');
-  setImmediate(() => processDocument(d.id).catch(e => console.error('extract', e)));
+  if (d.status === 'processing') throw httpError(409, 'This document is being read now.');
+  enqueue(d.id);
   res.json({ ok: true });
 }));
 
