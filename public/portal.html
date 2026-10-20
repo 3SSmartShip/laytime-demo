@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voyages · Laytime Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="topbar">
+    <div class="brand">Laytime Calculator <small>Stakeholder portal</small></div>
+    <div class="nav">
+      <a href="#/" id="navList">My voyages</a>
+      <a href="#/account" id="navAccount">Account</a>
+      <span class="who" id="who"></span>
+      <button type="button" id="btnLogout">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="banner warn mt8" id="pwBanner" hidden>You are using a temporary password. Choose your own password to continue.</div>
+
+  <section class="panel view" id="viewList" hidden>
+    <h2>Voyages you are working on</h2>
+    <div class="tbl"><table class="list" id="pList"></table></div>
+  </section>
+
+  <section class="panel view" id="viewAccount" hidden style="max-width:520px">
+    <h2>Your account</h2>
+    <dl class="kv" id="acctInfo"></dl>
+    <h2 class="mt12">Mobile and email <span class="hint">for signing in with a one-time code</span></h2>
+    <div id="acctContacts"></div>
+    <h2 class="mt12">Change password</h2>
+    <form class="stack" id="pwForm" novalidate>
+      <label class="f" id="pwCurRow">Current password<input id="pwCur" type="password" autocomplete="current-password"></label>
+      <label class="f">New password (at least 10 characters)<input id="pwNew" type="password" autocomplete="new-password" minlength="10" required></label>
+      <div><button class="primary" type="submit">Save password</button></div>
+      <div class="msg" id="pwMsg"></div>
+    </form>
+  </section>
+
+  <div class="view" id="viewVoyage" hidden>
+    <header>
+      <div>
+        <h1 id="vTitle">Voyage</h1>
+        <div class="sub" id="vSub"></div>
+      </div>
+      <div class="actions"><button type="button" id="btnBackList">All voyages</button><button type="button" class="primary" id="btnPortalExcel" hidden>Export to Excel</button></div>
+    </header>
+    <div class="tabs mt12" id="pTabs" role="tablist" aria-label="Ports"></div>
+    <div class="layout mt12">
+      <section class="panel"><h2>Port times</h2><dl class="milestones" id="pMilestones"></dl></section>
+      <section class="panel" id="pResult" hidden></section>
+    </div>
+    <div class="mt12" id="pSof"></div>
+    <section class="panel mt12" id="pStmtPanel" hidden>
+      <h2>Laytime calculation</h2>
+      <div class="tbl"><table id="pStmt"></table></div>
+    </section>
+  </div>
+</div>
+<script src="/shared/engine.js"></script>
+<script src="/shared/statement.js"></script>
+<script src="/shared/codes.js"></script>
+<script src="/shared/sof.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/sofpanel.js"></script>
+<script src="/js/portal.js"></script>
+</body>
+</html>

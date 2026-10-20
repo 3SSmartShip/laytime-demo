@@ -1,30 +1,40 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Sign in · Laytime Calculator</title>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    />
-    <link rel="stylesheet" href="/css/app.css" />
-  </head>
-  <body>
-    <main class="login">
-      <section class="panel">
-        <h1>Laytime Calculator</h1>
-        <p class="hint">Sign in with the account your administrator created for you.</p>
-        <form class="stack" id="loginForm" novalidate>
-          <label class="f">Email<input id="email" type="email" autocomplete="username" required /></label>
-          <label class="f"
-            >Password<input id="password" type="password" autocomplete="current-password" required
-          /></label>
-          <button class="primary" type="submit" id="loginBtn">Sign in</button>
-          <div class="msg bad" id="loginMsg" role="alert"></div>
-        </form>
-      </section>
-    </main>
-    <script src="/js/login.js"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Laytime Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main class="login">
+  <section class="panel">
+    <h1>Laytime Calculator</h1>
+    <div class="seg mt8" id="methodSeg" role="radiogroup" aria-label="How to sign in" hidden>
+      <label><input type="radio" name="method" value="otp" id="mOtp">One-time code</label>
+      <label><input type="radio" name="method" value="pwd" id="mPwd" checked>Password</label>
+    </div>
+
+    <form class="stack mt12" id="loginForm" novalidate>
+      <label class="f">Login ID or email<input id="email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label class="f">Password<input id="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit" id="loginBtn">Sign in</button>
+    </form>
+
+    <form class="stack mt12" id="otpForm" hidden novalidate>
+      <label class="f"><span id="otpLabel">Mobile number or email</span><input id="otpLogin" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="98765 43210 or name@company.com" required></label>
+      <div id="otpCodeRow" hidden class="stack">
+        <p class="hint" id="otpSent"></p>
+        <label class="f">6-digit code<input id="otpCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" class="code-input"></label>
+      </div>
+      <button class="primary" type="submit" id="otpBtn">Send code</button>
+      <div class="btnrow" id="otpMore" hidden><button type="button" id="otpResend" disabled>Send again</button><button type="button" id="otpChange">Use a different number or email</button></div>
+      <p class="hint" id="otpHint">Indian mobile numbers can be entered without +91.</p>
+    </form>
+    <div class="msg bad mt8" id="loginMsg" role="alert"></div>
+  </section>
+</main>
+<script src="/js/login.js"></script>
+</body>
 </html>

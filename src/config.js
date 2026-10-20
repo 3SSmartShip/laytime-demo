@@ -9,6 +9,7 @@ const config = {
   cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : isProd,
   trustProxy: process.env.TRUST_PROXY || (isProd ? '1' : ''),
   adminEmail: process.env.ADMIN_EMAIL || '',
+  adminLogin: process.env.ADMIN_LOGIN || 'admin',
   adminPassword: process.env.ADMIN_PASSWORD || '',
   seedDemo: process.env.SEED_DEMO !== 'false',
 };
