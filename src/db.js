@@ -23,10 +23,13 @@ async function tx(fn) {
 }
 
 async function audit(db, { tenantId, userId, voyageId, action, detail }) {
-  await db.query(
-    'INSERT INTO audit_log (tenant_id, user_id, voyage_id, action, detail) VALUES ($1,$2,$3,$4,$5)',
-    [tenantId || null, userId || null, voyageId || null, action, detail ? JSON.stringify(detail) : null]
-  );
+  await db.query('INSERT INTO audit_log (tenant_id, user_id, voyage_id, action, detail) VALUES ($1,$2,$3,$4,$5)', [
+    tenantId || null,
+    userId || null,
+    voyageId || null,
+    action,
+    detail ? JSON.stringify(detail) : null,
+  ]);
 }
 
 module.exports = { pool, query, tx, audit };

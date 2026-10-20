@@ -1,33 +1,55 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer">
-<title>Join voyage · Laytime Calculator</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-</head>
-<body>
-<main class="login">
-  <section class="panel">
-    <h1>Join voyage</h1>
-    <p id="invIntro" class="hint">Checking your invitation…</p>
-    <form class="stack" id="invForm" hidden novalidate>
-      <label class="f">Email<input id="invEmail" type="email" disabled></label>
-      <label class="f"><span>Choose a login ID <span class="hint">(letters, digits, dot, underscore, hyphen)</span></span><input id="invLogin" maxlength="40" autocapitalize="none" spellcheck="false" autocomplete="username" required></label>
-      <label class="f">Your name<input id="invName" autocomplete="name" required></label>
-      <label class="f">Company<input id="invCompany" autocomplete="organization"></label>
-      <label class="f">Choose a password (at least 10 characters)<input id="invPw" type="password" autocomplete="new-password" minlength="10" required></label>
-      <button class="primary" type="submit">Join and open the voyage</button>
-    </form>
-    <div id="invExisting" hidden>
-      <p>You already have a login. Sign in as <strong id="invExEmail"></strong> to join.</p>
-      <div class="btnrow"><a class="btnlink primary" id="invSignIn" href="/login.html">Sign in</a><button type="button" class="primary" id="invJoin" hidden>Join voyage</button></div>
-    </div>
-    <div class="msg bad" id="invMsg" role="alert"></div>
-  </section>
-</main>
-<script src="/js/invite.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Join voyage · Laytime Calculator</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body>
+    <main class="login">
+      <section class="panel">
+        <h1>Join voyage</h1>
+        <p id="invIntro" class="hint">Checking your invitation…</p>
+        <form class="stack" id="invForm" hidden novalidate>
+          <label class="f">Email<input id="invEmail" type="email" disabled /></label>
+          <label class="f"
+            ><span>Choose a login ID <span class="hint">(letters, digits, dot, underscore, hyphen)</span></span
+            ><input
+              id="invLogin"
+              maxlength="40"
+              autocapitalize="none"
+              spellcheck="false"
+              autocomplete="username"
+              required
+          /></label>
+          <label class="f">Your name<input id="invName" autocomplete="name" required /></label>
+          <label class="f">Company<input id="invCompany" autocomplete="organization" /></label>
+          <label class="f"
+            >Choose a password (at least 10 characters)<input
+              id="invPw"
+              type="password"
+              autocomplete="new-password"
+              minlength="10"
+              required
+          /></label>
+          <button class="primary" type="submit">Join and open the voyage</button>
+        </form>
+        <div id="invExisting" hidden>
+          <p>You already have a login. Sign in as <strong id="invExEmail"></strong> to join.</p>
+          <div class="btnrow">
+            <a class="btnlink primary" id="invSignIn" href="/login.html">Sign in</a
+            ><button type="button" class="primary" id="invJoin" hidden>Join voyage</button>
+          </div>
+        </div>
+        <div class="msg bad" id="invMsg" role="alert"></div>
+      </section>
+    </main>
+    <script src="/js/invite.js"></script>
+  </body>
 </html>

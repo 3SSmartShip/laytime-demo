@@ -16,10 +16,10 @@ The calculation has been checked against the MV Vishva Nidhi loadport and dispor
 
 | Part | What |
 |---|---|
-| Server | Node.js 20, Express |
-| Database | PostgreSQL 16 |
+| Server | Node.js 24 (22+ works), Express |
+| Database | PostgreSQL 16+ |
 | Frontend | Plain HTML/CSS/JS served by the same server; no build step |
-| Packaging | Docker and docker-compose |
+| Hosting | Railway (Dockerfile + Railway Postgres, see [Deploying on Railway](#deploying-on-railway)); docker-compose for self-hosting |
 
 The laytime engine is in `shared/engine.js` and runs in both the browser (live results while typing) and the server (stored summaries and Excel export).
 
@@ -48,13 +48,13 @@ docker compose exec db pg_dump -U laytime laytime > backup.sql   # backup
 
 ## Run it without Docker
 
-You need Node 20+ and a PostgreSQL database.
+You need Node 22+ (24 recommended, see `.nvmrc`) and a PostgreSQL database.
 
 ```bash
 npm install
 export DATABASE_URL=postgres://laytime:password@localhost:5432/laytime
-export ADMIN_LOGIN=admin ADMIN_PASSWORD='a-long-password'
-npm start
+export ADMIN_LOGIN=platform.admin ADMIN_PASSWORD='a-long-password'
+npm run dev        # restarts on file changes; `npm start` in production
 ```
 
 ## Who can do what
@@ -76,20 +76,65 @@ Every voyage query is filtered by the signed-in user's organisation on the serve
   - **Create a login.** For people without their own email, such as a ship's master. You pass the login ID and password on yourself.
   - **Invite by email.** They choose their own login ID and password from the link.
   - **Existing login ID.** Adds someone who already works with you on another voyage. They keep their password.
-- **Password resets.** Organisation admins reset their own users. An operator can reset a stakeholder's password only if their organisation created that login. Stakeholders can always change their own password under Account.
+- **Password resets.** Organisation admins reset their own users. An operator can reset a stakeholder's password only if their organisation created that login **and** the login is not also used on another organisation's voyages; otherwise the creator could sign in as that person and read the other organisation's data. Stakeholders can always change their own password under Account, or sign in with a code.
+- **Sessions.** Changing or resetting a password signs that person out everywhere else. Ten failed sign-ins for one login ID lock it for 15 minutes, on top of the per-IP limit.
 - **Upgrading.** Existing users get a login ID built from their email (e.g. `ravi@agency.com` → `ravi`, then `ravi-2` if taken). Check theirs under Admin → Users.
 
-## Going live
+## Deploying on Railway
 
-1. **Put it behind HTTPS.** Use nginx, Caddy or a cloud load balancer, then set `COOKIE_SECURE=true` in `.env`. Example Caddyfile:
-   ```
-   laytime.yourdomain.com {
-     reverse_proxy localhost:3000
-   }
-   ```
-2. **Use strong secrets.** `JWT_SECRET` must be 32+ random characters. Changing it signs everyone out.
-3. **Back up the `pgdata` volume** or run `pg_dump` on a schedule.
-4. **After first sign-in:** change the platform admin password (Account), then create your client organisations under Admin.
+Production runs on [Railway](https://railway.com): one service built from the `Dockerfile` plus a Railway PostgreSQL database. [railway.json](railway.json) tells Railway to build with the Dockerfile, switch traffic only once `/healthz` passes (so a failed migration leaves the old version running), and restart the app if it crashes.
+
+**First-time setup**
+
+1. In Railway: **New Project → Deploy from GitHub repo** → `3SSmartShip/laytime-demo`.
+2. In the project: **+ New → Database → PostgreSQL**.
+3. App service → **Variables**. The minimum:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `JWT_SECRET` | `openssl rand -hex 32` |
+   | `ADMIN_LOGIN` | the platform admin's login ID (3–40 letters, digits, `.`, `_`, `-`); don't keep the default `admin` |
+   | `ADMIN_PASSWORD` | a long temporary password, removed after first sign-in |
+   | `APP_URL` | `https://<your domain>`, used in invite links |
+   | `SEED_DEMO` | `false` in production |
+
+   Add the SMS/email settings to turn on code sign-in, and the Luma settings for AI reading of PDFs ([.env.example](.env.example) lists every variable). Leave `PORT`, `NODE_ENV`, `COOKIE_SECURE` and `TRUST_PROXY` unset: Railway sets `PORT`, the Dockerfile sets `NODE_ENV=production`, and the production defaults (secure cookies, one trusted proxy hop) are right for Railway.
+4. App service → **Settings → Networking → Generate Domain** (or add your own), and pick a **Region** near your users.
+5. Sign in, change the admin password under Account, then delete `ADMIN_PASSWORD` from the variables. Create client organisations under Admin.
+
+Every push to `main` then deploys automatically. Migrations run on start.
+
+**Before going live, check:**
+
+- Backups are on for the Postgres service (its **Backups** tab), or a scheduled `pg_dump` runs against it.
+- If Luma is on, clients know their uploaded documents are sent to Luma for reading.
+- `JWT_SECRET` is also the key for one-time codes. Changing it signs everyone out and voids codes in flight.
+- `.env.example` has `COOKIE_SECURE=false` for local use. Don't copy that to Railway.
+
+### Self-hosting
+
+`docker compose up -d --build` on any Linux server, with HTTPS in front (Caddy shown) and `COOKIE_SECURE=true`:
+
+```
+laytime.yourdomain.com {
+  reverse_proxy localhost:3000
+}
+```
+
+Back up the `pgdata` volume or run `pg_dump` on a schedule.
+
+## Development
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Server with restart on changes |
+| `npm test` | Tests (engine only, unless `TEST_DATABASE_URL` is set) |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier |
+| `npm run check` | Format check + lint + tests; run before pushing |
+
+Make changes on top of the latest `main` from GitHub, so formatting and fixes are not lost.
 
 ## Tests
 
@@ -98,7 +143,15 @@ npm test                                            # engine tests only
 TEST_DATABASE_URL=postgres://user:pass@localhost:5432/laytime_test npm test   # adds API tests
 ```
 
-The API tests drop and recreate the schema in `TEST_DATABASE_URL`, so point them at an empty database you don't need.
+The API tests drop and recreate the schema in `TEST_DATABASE_URL`, so point them at an empty database you don't need. A throwaway one with Docker:
+
+```bash
+docker run --rm -d --name laytime-test-db -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:16-alpine
+TEST_DATABASE_URL=postgres://postgres:test@localhost:55432/postgres npm test
+docker stop laytime-test-db
+```
+
+Use a real Postgres. In-browser/WASM Postgres builds (PGlite) mix up statements from parallel connections and make the tests fail at random.
 
 ## Signing in with a one-time code
 
@@ -108,7 +161,7 @@ People can sign in with a 6-digit code sent to their **mobile number** (SMS) or 
 - **How mobile and email get on a login:**
   - Admins enter them when adding users (or later with *Edit contact*), and operators when creating stakeholder logins.
   - People can add or change their own under *Account*. That change is confirmed with a code sent to the new number or address.
-- **Rules for codes:** a code is valid for 5 minutes (`OTP_TTL_MINUTES`) and works once. Only the newest code counts. Five wrong tries cancel it. A new code can be sent after 60 seconds, at most 5 an hour per person, with extra limits per IP address. The reply is the same whether or not an account exists, so nobody can find out who has a login.
+- **Rules for codes:** a code is valid for 5 minutes (`OTP_TTL_MINUTES`) and works once. Only the newest code counts. Five wrong tries cancel it. A new code can be sent after 60 seconds, at most 5 an hour per person, with extra limits per IP address. The code is sent after the reply, so the answer and its timing are the same whether or not an account exists, and nobody can find out who has a login. A failed send is logged on the server.
 - **Temporary passwords:** a code proves who someone is. So a person who signs in with a code is not forced to replace a temporary password, and can set a password without knowing the old one.
 
 ### Setting up SMS and email
@@ -174,7 +227,7 @@ Stakeholders without commercial access never receive rates, terms or amounts fro
 
 **Events.** Milestones (arrived, NOR tendered/accepted, laytime commences, berthed, commenced, completed, sailed, ETC) fill the time sheet automatically and lock those fields. Stoppages have a reason code and a start, plus an end once they finish; an open stoppage runs up to the current port time. Pasting lines works too.
 
-**Reviews.** Anyone except the author can confirm an event. Anyone can dispute it, but must give a reason. The author can fix a disputed event, which sets it back to open. Confirmed events can only be changed by your organisation. Disputed lines are marked `[disputed]` in the statement and counted on the voyage.
+**Reviews.** Only another side can confirm an event: not its author, and not someone with the same role (another agent, or a colleague in your own organisation). Anyone can dispute it, but must give a reason. A disputed event can then be confirmed only by the party that disputed it, or by your organisation. The author can fix a disputed event, which sets it back to open. If an event changed after a reviewer opened it, their confirm or dispute is refused, so nobody confirms a version they didn't see. Confirmed events can only be changed by your organisation. Disputed lines are marked `[disputed]` in the statement and counted on the voyage.
 
 **CP treatment.** Each reason code has a default treatment (e.g. rain not to count, shore crane breakdown counts, ship's gear breakdown not to count and stops demurrage). Change it per voyage in *CP treatment of SOF reasons* to match the charter party. The statement recalculates at once.
 
@@ -225,15 +278,15 @@ If Luma's real API looks different, change only `buildRequest()` and `parseRespo
 
 The mock Luma server in `test/esof.test.js` shows the round trip.
 
-Documents are stored in Postgres (15 MB limit per file) and processed in the app process. For heavy volumes, move `processDocument()` to a job queue.
+Documents are stored in Postgres (15 MB limit per file), so they survive redeploys. They are read in the app process, two at a time, with the rest waiting their turn. Excel files are refused if they expand to more than 25 MB, which stops "zip bombs" from crashing the server. Only the first 20,000 lines are read. A document cut off by a restart is marked *Could not read* after 10 minutes, and can be retried. For heavy volumes, move `processDocument()` to a job queue.
 
-## How the calculation works
+Terms found in any document (rates, quantities, laytime terms) are only sent to people who can see amounts.
 
 ## How the calculation works
 
 - **Time starts counting** at "Time to count from" if it is filled in. Otherwise it starts at NOR tendered plus the turn time.
 - **Excluded windows** (e.g. SAFSHEX = Saturday 12:00 to Monday 08:00) and holidays apply even if used (EIU).
-- **Not-to-count periods** stop the clock. A period marked half time counts at 50%.
+- **Not-to-count periods** stop the clock. A period marked half time counts at 50%. Once on demurrage, a period that stops demurrage counts at its own demurrage share (by default the same as its laytime share).
 - **Laytime expiry:** when laytime runs out the vessel is on demurrage. With "Once on demurrage, always on demurrage" ticked, only periods marked "Stops demurrage" interrupt it. Untick it if the charter party lets other delays count off demurrage too.
 - **Despatch** is paid on laytime saved (allowed minus used), at the despatch rate. "HD" sets it to half the demurrage rate.
 - **Amounts** are pro rata: days to 4 decimals × the daily rate.
@@ -247,7 +300,8 @@ shared/         laytime engine, statement builder, example voyage (used by brows
 public/         login, app shell, stakeholder portal, invite page, CSS, browser JS
 src/extract/    document reading: Luma adapter, built-in reader, result normaliser
 db/migrations/  SQL migrations, applied in order on start
-test/           engine, API, eSOF/document, login ID, OTP and permission tests (with mock Luma and SMS/email gateways)
+test/           engine, API, eSOF/document, login ID, OTP, permission and hardening tests (with mock Luma and SMS/email gateways)
+railway.json    Railway build and deploy settings
 ```
 
 ## API (for integrations)
@@ -279,7 +333,7 @@ All endpoints are JSON and need the session cookie. Write requests (POST, PUT, P
 | POST | /api/v/:id/events | Record an event `{portId, code, at}` or `{portId, code, from, to?}` |
 | POST | /api/v/:id/events/bulk | Pasted lines `{portId, text}` |
 | PATCH / DELETE | /api/v/:id/events/:eid | Change (with `version`) or remove an event |
-| POST | /api/v/:id/events/:eid/review | `{decision: confirm\|dispute\|comment, comment}` |
+| POST | /api/v/:id/events/:eid/review | `{decision: confirm\|dispute\|comment, comment, version?}`; 409 if the event changed since `version` |
 | POST | /api/v/:id/invites | Invite `{email, party, commercial?}`; returns a link |
 | POST | /api/v/:id/participants | Create a stakeholder login `{name, company?, loginId?, email?, party, commercial?, password}` |
 | POST | /api/v/:id/participants/existing | Add an existing stakeholder `{loginId, party, commercial?}` |
@@ -289,3 +343,4 @@ All endpoints are JSON and need the session cookie. Write requests (POST, PUT, P
 | POST | /api/v/:id/documents/:did/apply | `{events: [indexes], terms: bool}` |
 | POST | /api/invites/lookup, /api/invites/accept | Invitation flow (public) |
 | GET | /api/invites/mine | Stakeholder's voyages |
+| GET | /healthz | Health check, no sign-in (200 when the database answers) |

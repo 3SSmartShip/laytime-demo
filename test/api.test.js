@@ -18,13 +18,20 @@ if (!url) {
 
   let base, server;
   class Client {
-    constructor() { this.cookie = ''; this.tenant = null; }
+    constructor() {
+      this.cookie = '';
+      this.tenant = null;
+    }
     async req(method, path, body, raw) {
       const h = { 'X-Requested-With': 'fetch' };
       if (body !== undefined) h['Content-Type'] = 'application/json';
       if (this.cookie) h.Cookie = this.cookie;
       if (this.tenant) h['X-Tenant-Id'] = this.tenant;
-      const r = await fetch(base + path, { method, headers: h, body: body !== undefined ? JSON.stringify(body) : undefined });
+      const r = await fetch(base + path, {
+        method,
+        headers: h,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
       const sc = r.headers.get('set-cookie');
       if (sc) this.cookie = sc.split(';')[0];
       if (raw) return r;
@@ -32,33 +39,56 @@ if (!url) {
     }
     async login(login, password, { keepTemp = false } = {}) {
       const r = await this.req('POST', '/api/auth/login', { login, password });
-      if (r.status === 200 && r.body.user.mustChangePassword && !keepTemp) await this.req('POST', '/api/auth/password', { current: password, next: password });
+      if (r.status === 200 && r.body.user.mustChangePassword && !keepTemp)
+        await this.req('POST', '/api/auth/password', { current: password, next: password });
       return r;
     }
   }
 
   test.before(async () => {
     await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
-    await migrate(); await seed();
+    await migrate();
+    await seed();
     server = createApp().listen(0);
     base = `http://127.0.0.1:${server.address().port}`;
   });
-  test.after(async () => { server.close(); await pool.end(); });
+  test.after(async () => {
+    server.close();
+    await pool.end();
+  });
 
-  const root = new Client(), a = new Client(), b = new Client();
+  const root = new Client(),
+    a = new Client(),
+    b = new Client();
   let tA, tB, voyageA;
 
   test('platform admin signs in and creates two organisations', async () => {
     assert.strictEqual((await root.login('root@test.local', 'wrong-password')).status, 401);
     assert.strictEqual((await root.login('root@test.local', 'root-password-123')).status, 200);
-    const r1 = await root.req('POST', '/api/admin/tenants', { name: 'Alpha Shipping', adminName: 'Asha', adminEmail: 'asha@alpha.test', adminPassword: 'alpha-password-1' });
-    const r2 = await root.req('POST', '/api/admin/tenants', { name: 'Beta Lines', adminName: 'Bala', adminEmail: 'bala@beta.test', adminPassword: 'beta-password-12' });
-    assert.strictEqual(r1.status, 201); assert.strictEqual(r2.status, 201);
-    tA = r1.body.tenant.id; tB = r2.body.tenant.id;
+    const r1 = await root.req('POST', '/api/admin/tenants', {
+      name: 'Alpha Shipping',
+      adminName: 'Asha',
+      adminEmail: 'asha@alpha.test',
+      adminPassword: 'alpha-password-1',
+    });
+    const r2 = await root.req('POST', '/api/admin/tenants', {
+      name: 'Beta Lines',
+      adminName: 'Bala',
+      adminEmail: 'bala@beta.test',
+      adminPassword: 'beta-password-12',
+    });
+    assert.strictEqual(r1.status, 201);
+    assert.strictEqual(r2.status, 201);
+    tA = r1.body.tenant.id;
+    tB = r2.body.tenant.id;
   });
 
   test('CSRF header is required on writes', async () => {
-    const r = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const r = await fetch(base + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
     assert.strictEqual(r.status, 403);
   });
 
@@ -75,7 +105,10 @@ if (!url) {
     assert.strictEqual((await b.login('bala@beta.test', 'beta-password-12')).status, 200);
     assert.strictEqual((await b.req('GET', '/api/voyages')).body.voyages.length, 0);
     assert.strictEqual((await b.req('GET', `/api/voyages/${voyageA.id}`)).status, 404);
-    assert.strictEqual((await b.req('PUT', `/api/voyages/${voyageA.id}`, { data: voyageA.data, version: voyageA.version })).status, 404);
+    assert.strictEqual(
+      (await b.req('PUT', `/api/voyages/${voyageA.id}`, { data: voyageA.data, version: voyageA.version })).status,
+      404,
+    );
     assert.strictEqual((await b.req('DELETE', `/api/voyages/${voyageA.id}`)).status, 404);
     assert.strictEqual((await b.req('GET', `/api/voyages/${voyageA.id}/export.xlsx`)).status, 404);
     // a tenant user cannot switch tenant with the header
@@ -104,7 +137,10 @@ if (!url) {
 
   test('rejects malformed voyage data', async () => {
     const cur = (await a.req('GET', `/api/voyages/${voyageA.id}`)).body.voyage;
-    const bad = await a.req('PUT', `/api/voyages/${voyageA.id}`, { data: { ...cur.data, ports: [] }, version: cur.version });
+    const bad = await a.req('PUT', `/api/voyages/${voyageA.id}`, {
+      data: { ...cur.data, ports: [] },
+      version: cur.version,
+    });
     assert.strictEqual(bad.status, 400);
   });
 
@@ -114,12 +150,21 @@ if (!url) {
     const buf = Buffer.from(await r.arrayBuffer());
     assert.strictEqual(buf.slice(0, 2).toString(), 'PK');
     const ExcelJS = require('exceljs');
-    const wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf);
-    assert.deepStrictEqual(wb.worksheets.map(w => w.name), ['Summary', '1 Sur LP', '2 Visakhapatnam DP']);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    assert.deepStrictEqual(
+      wb.worksheets.map(w => w.name),
+      ['Summary', '1 Sur LP', '2 Visakhapatnam DP'],
+    );
   });
 
   test('members cannot manage users; disabled users are signed out', async () => {
-    const add = await a.req('POST', '/api/admin/users', { name: 'Mo', email: 'mo@alpha.test', role: 'member', password: 'member-password' });
+    const add = await a.req('POST', '/api/admin/users', {
+      name: 'Mo',
+      email: 'mo@alpha.test',
+      role: 'member',
+      password: 'member-password',
+    });
     assert.strictEqual(add.status, 201);
     const m = new Client();
     assert.strictEqual((await m.login('mo@alpha.test', 'member-password')).status, 200);

@@ -3,11 +3,33 @@
   // Keep the token for this tab only, and take it out of the address bar and history.
   const KEY = 'lt-invite';
   let token = location.hash.slice(1);
-  try { if (token) sessionStorage.setItem(KEY, token); else token = sessionStorage.getItem(KEY) || ''; } catch (e) {}
+  try {
+    if (token) sessionStorage.setItem(KEY, token);
+    else token = sessionStorage.getItem(KEY) || '';
+  } catch (e) {}
   if (location.hash) history.replaceState(null, '', location.pathname);
-  const post = (path, body) => fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }, body: JSON.stringify(body) })
-    .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(j.error || 'Something went wrong.'); e.status = r.status; e.suggestion = j.suggestion; throw e; } return j; });
-  const done = r => { try { sessionStorage.removeItem(KEY); } catch (e) {} location.href = `/portal.html#/voyage/${r.voyageId}`; };
+  const post = (path, body) =>
+    fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+      body: JSON.stringify(body),
+    }).then(async r => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const e = new Error(j.error || 'Something went wrong.');
+        e.status = r.status;
+        e.suggestion = j.suggestion;
+        throw e;
+      }
+      return j;
+    });
+  const done = r => {
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch (e) {}
+    location.href = `/portal.html#/voyage/${r.voyageId}`;
+  };
 
   async function start() {
     try {
@@ -18,21 +40,44 @@
         $('invExEmail').textContent = inv.existingLoginId || inv.email;
         $('invSignIn').href = `/login.html?next=${encodeURIComponent('/invite.html')}`;
         // already signed in as that person? offer to join directly
-        const me = await fetch('/api/auth/me', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
-        if (me && me.user && (me.user.email || '').toLowerCase() === inv.email.toLowerCase()) { $('invSignIn').hidden = true; $('invJoin').hidden = false; }
+        const me = await fetch('/api/auth/me', { credentials: 'same-origin' })
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null);
+        if (me && me.user && (me.user.email || '').toLowerCase() === inv.email.toLowerCase()) {
+          $('invSignIn').hidden = true;
+          $('invJoin').hidden = false;
+        }
       } else {
         $('invForm').hidden = false;
         $('invEmail').value = inv.email;
         $('invLogin').value = inv.suggestedLoginId || '';
       }
-    } catch (e) { $('invIntro').textContent = ''; $('invMsg').textContent = e.message; }
+    } catch (e) {
+      $('invIntro').textContent = '';
+      $('invMsg').textContent = e.message;
+    }
   }
-  $('invJoin').onclick = () => post('/api/invites/accept', { token }).then(done).catch(e => { $('invMsg').textContent = e.message; });
+  $('invJoin').onclick = () =>
+    post('/api/invites/accept', { token })
+      .then(done)
+      .catch(e => {
+        $('invMsg').textContent = e.message;
+      });
   $('invForm').addEventListener('submit', e => {
     e.preventDefault();
     $('invMsg').textContent = '';
-    post('/api/invites/accept', { token, loginId: $('invLogin').value.trim(), name: $('invName').value.trim(), company: $('invCompany').value.trim(), password: $('invPw').value })
-      .then(done).catch(err => { $('invMsg').textContent = err.message; if (err.suggestion) $('invLogin').value = err.suggestion; });
+    post('/api/invites/accept', {
+      token,
+      loginId: $('invLogin').value.trim(),
+      name: $('invName').value.trim(),
+      company: $('invCompany').value.trim(),
+      password: $('invPw').value,
+    })
+      .then(done)
+      .catch(err => {
+        $('invMsg').textContent = err.message;
+        if (err.suggestion) $('invLogin').value = err.suggestion;
+      });
   });
   start();
 })();

@@ -3,12 +3,22 @@ const { z } = require('zod');
 const { httpError } = require('./auth');
 
 const RE = /^[A-Za-z0-9._-]{3,40}$/;
-const schema = z.string().trim().regex(RE, 'Login ID must be 3–40 characters: letters, digits, dot, underscore or hyphen.');
+const schema = z
+  .string()
+  .trim()
+  .regex(RE, 'Login ID must be 3–40 characters: letters, digits, dot, underscore or hyphen.');
 
 function baseFrom(text) {
-  let b = String(text || '').toLowerCase().split('@')[0]
-    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.{2,}/g, '.').replace(/^[._-]+|[._-]+$/g, '').slice(0, 30);
+  let b = String(text || '')
+    .toLowerCase()
+    .split('@')[0]
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 30);
   if (b.length < 3) b = `user${b}`;
   return b;
 }
@@ -21,7 +31,10 @@ async function isTaken(db, loginId, exceptUserId = null) {
 async function suggest(db, text) {
   const b = baseFrom(text);
   if (!(await isTaken(db, b))) return b;
-  for (let n = 2; n < 1000; n++) { const c = `${b}-${n}`; if (!(await isTaken(db, c))) return c; }
+  for (let n = 2; n < 1000; n++) {
+    const c = `${b}-${n}`;
+    if (!(await isTaken(db, c))) return c;
+  }
   return `${b}-${Date.now().toString(36)}`;
 }
 

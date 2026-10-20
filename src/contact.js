@@ -16,7 +16,9 @@ function normalizeMobile(input) {
   return /^\+[1-9]\d{7,14}$/.test(e164) ? e164 : undefined; // undefined = present but invalid
 }
 
-function maskMobile(m) { return m ? `${m.slice(0, 3)}••••••${m.slice(-4)}` : ''; }
+function maskMobile(m) {
+  return m ? `${m.slice(0, 3)}••••••${m.slice(-4)}` : '';
+}
 function maskEmail(e) {
   if (!e) return '';
   const [u, d] = e.split('@');

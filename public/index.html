@@ -1,277 +1,389 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Laytime Calculator</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-</head>
-<body>
-<div class="wrap">
-  <nav class="topbar">
-    <div class="brand">Laytime Calculator <small id="orgName"></small></div>
-    <div class="nav">
-      <select id="tenantPick" aria-label="Organisation" hidden></select>
-      <a href="#/voyages" id="navVoyages">Voyages</a>
-      <a href="#/admin" id="navAdmin" hidden>Admin</a>
-      <a href="#/account" id="navAccount">Account</a>
-      <span class="who" id="who"></span>
-      <button type="button" id="btnLogout">Sign out</button>
-    </div>
-  </nav>
-  <div class="banner warn" id="pwBanner" hidden>You are using a temporary password. Choose your own password to continue.</div>
-</div>
-
-<div class="wrap view" id="viewList" hidden>
-  <section class="panel">
-    <h2>Voyages</h2>
-    <div class="list-tools">
-      <input id="listSearch" type="search" placeholder="Search vessel, charterers or port">
-      <div class="actions">
-        <button type="button" id="btnNewSample">New from example</button>
-        <button type="button" class="primary" id="btnNewVoyage">New voyage</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Laytime Calculator</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="/css/app.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="topbar">
+        <div class="brand">Laytime Calculator <small id="orgName"></small></div>
+        <div class="nav">
+          <select id="tenantPick" aria-label="Organisation" hidden></select>
+          <a href="#/voyages" id="navVoyages">Voyages</a>
+          <a href="#/admin" id="navAdmin" hidden>Admin</a>
+          <a href="#/account" id="navAccount">Account</a>
+          <span class="who" id="who"></span>
+          <button type="button" id="btnLogout">Sign out</button>
+        </div>
+      </nav>
+      <div class="banner warn" id="pwBanner" hidden>
+        You are using a temporary password. Choose your own password to continue.
       </div>
     </div>
-    <div class="msg bad" id="listMsg"></div>
-    <div class="tbl"><table class="list" id="listTable"></table></div>
-  </section>
-</div>
 
-<div class="wrap view" id="viewAdmin" hidden>
-  <section class="panel" id="permsPanel" hidden>
-    <h2>Roles and modules <span class="hint">what each role can see and do</span></h2>
-    <div class="perm-tools">
-      <label class="f">Applies to<select id="permScope"><option value="default">Default for all organisations</option></select></label>
-      <button type="button" id="permReset" hidden>Reset this organisation to the defaults</button>
-      <span class="msg" id="permMsg"></span>
+    <div class="wrap view" id="viewList" hidden>
+      <section class="panel">
+        <h2>Voyages</h2>
+        <div class="list-tools">
+          <input id="listSearch" type="search" placeholder="Search vessel, charterers or port" />
+          <div class="actions">
+            <button type="button" id="btnNewSample">New from example</button>
+            <button type="button" class="primary" id="btnNewVoyage">New voyage</button>
+          </div>
+        </div>
+        <div class="msg bad" id="listMsg"></div>
+        <div class="tbl"><table class="list" id="listTable"></table></div>
+      </section>
     </div>
-    <div class="tbl"><table class="perm" id="permTable"></table></div>
-    <div class="perm-legend"><span><i></i>Set for this organisation only</span><span>– does not apply to this role</span><span>Changes apply at once, also to people who are signed in.</span></div>
-  </section>
-  <section class="panel" id="tenantsPanel" hidden>
-    <h2>Organisations</h2>
-    <div class="tbl"><table id="tenantTable"></table></div>
-    <form class="stack" id="tenantForm" style="margin-top:14px;max-width:560px" novalidate>
-      <h2>Add organisation</h2>
-      <div class="grid">
-        <label class="f">Organisation name<input id="tnName" required></label>
-        <label class="f">First admin name<input id="tnAdminName" required></label>
-        <label class="f">First admin login ID<input id="tnAdminLogin" autocapitalize="none" spellcheck="false" maxlength="40" required></label>
-        <label class="f"><span>First admin email <span class="hint">(optional)</span></span><input id="tnAdminEmail" type="email"></label>
-        <label class="f">Temporary password<input id="tnAdminPw" type="text" minlength="10" required></label>
+
+    <div class="wrap view" id="viewAdmin" hidden>
+      <section class="panel" id="permsPanel" hidden>
+        <h2>Roles and modules <span class="hint">what each role can see and do</span></h2>
+        <div class="perm-tools">
+          <label class="f"
+            >Applies to<select id="permScope">
+              <option value="default">Default for all organisations</option>
+            </select></label
+          >
+          <button type="button" id="permReset" hidden>Reset this organisation to the defaults</button>
+          <span class="msg" id="permMsg"></span>
+        </div>
+        <div class="tbl"><table class="perm" id="permTable"></table></div>
+        <div class="perm-legend">
+          <span><i></i>Set for this organisation only</span><span>– does not apply to this role</span
+          ><span>Changes apply at once, also to people who are signed in.</span>
+        </div>
+      </section>
+      <section class="panel" id="tenantsPanel" hidden>
+        <h2>Organisations</h2>
+        <div class="tbl"><table id="tenantTable"></table></div>
+        <form class="stack" id="tenantForm" style="margin-top: 14px; max-width: 560px" novalidate>
+          <h2>Add organisation</h2>
+          <div class="grid">
+            <label class="f">Organisation name<input id="tnName" required /></label>
+            <label class="f">First admin name<input id="tnAdminName" required /></label>
+            <label class="f"
+              >First admin login ID<input
+                id="tnAdminLogin"
+                autocapitalize="none"
+                spellcheck="false"
+                maxlength="40"
+                required
+            /></label>
+            <label class="f"
+              ><span>First admin email <span class="hint">(optional)</span></span
+              ><input id="tnAdminEmail" type="email"
+            /></label>
+            <label class="f">Temporary password<input id="tnAdminPw" type="text" minlength="10" required /></label>
+          </div>
+          <div><button class="primary" type="submit">Create organisation</button></div>
+          <div class="msg" id="tenantMsg"></div>
+          <div id="tenantCreds" hidden></div>
+        </form>
+      </section>
+      <section class="panel" id="usersPanel">
+        <h2>Users <span class="hint" id="usersFor"></span></h2>
+        <div class="tbl"><table id="userTable"></table></div>
+        <form class="stack" id="userForm" style="margin-top: 14px; max-width: 560px" novalidate>
+          <h2>Add user</h2>
+          <div class="grid">
+            <label class="f">Name<input id="uName" required /></label>
+            <label class="f"
+              >Login ID<input id="uLogin" autocapitalize="none" spellcheck="false" maxlength="40" required
+            /></label>
+            <label class="f"
+              ><span>Email <span class="hint">(optional)</span></span
+              ><input id="uEmail" type="email"
+            /></label>
+            <label class="f"
+              ><span>Mobile <span class="hint">(optional, for sign-in codes)</span></span
+              ><input id="uMobile" type="tel" placeholder="98765 43210"
+            /></label>
+            <label class="f"
+              >Role<select id="uRole">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+              </select></label
+            >
+            <label class="f">Temporary password<input id="uPw" type="text" minlength="10" required /></label>
+          </div>
+          <div><button class="primary" type="submit">Add user</button></div>
+          <div class="msg" id="userMsg"></div>
+          <div id="userCreds" hidden></div>
+        </form>
+      </section>
+      <section class="panel" id="auditPanel">
+        <h2>Recent activity</h2>
+        <div class="tbl"><table id="auditTable"></table></div>
+      </section>
+    </div>
+
+    <div class="wrap view" id="viewAccount" hidden>
+      <section class="panel" style="max-width: 520px">
+        <h2>Your account</h2>
+        <dl class="kv" id="acctInfo"></dl>
+        <h2 class="mt12">Mobile and email <span class="hint">for signing in with a one-time code</span></h2>
+        <div id="acctContacts"></div>
+        <h2 class="mt12">Change password</h2>
+        <form class="stack" id="pwForm" novalidate>
+          <label class="f" id="pwCurRow"
+            >Current password<input id="pwCur" type="password" autocomplete="current-password"
+          /></label>
+          <label class="f"
+            >New password (at least 10 characters)<input
+              id="pwNew"
+              type="password"
+              autocomplete="new-password"
+              minlength="10"
+              required
+          /></label>
+          <div><button class="primary" type="submit">Save password</button></div>
+          <div class="msg" id="pwMsg"></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="wrap view" id="viewEditor" hidden>
+      <header>
+        <div>
+          <h1 id="edTitle">Voyage</h1>
+          <div class="sub" id="subline"></div>
+        </div>
+        <div class="actions">
+          <span class="toast" id="toast" role="status"></span>
+          <span class="save-state" id="saveState"></span>
+          <label class="chk"
+            ><select id="vStatus" aria-label="Status">
+              <option value="draft">Draft</option>
+              <option value="final">Final</option>
+            </select></label
+          >
+          <button id="btnBack" type="button">All voyages</button>
+          <button id="btnCopy" type="button">Copy statement</button>
+          <button id="btnExcel" class="primary" type="button">Export to Excel</button>
+        </div>
+      </header>
+      <div class="banner warn ro-banner" id="roBanner" hidden>
+        View only. Your role cannot change voyages; you can still work on the statement of facts below.
       </div>
-      <div><button class="primary" type="submit">Create organisation</button></div>
-      <div class="msg" id="tenantMsg"></div>
-      <div id="tenantCreds" hidden></div>
-    </form>
-  </section>
-  <section class="panel" id="usersPanel">
-    <h2>Users <span class="hint" id="usersFor"></span></h2>
-    <div class="tbl"><table id="userTable"></table></div>
-    <form class="stack" id="userForm" style="margin-top:14px;max-width:560px" novalidate>
-      <h2>Add user</h2>
-      <div class="grid">
-        <label class="f">Name<input id="uName" required></label>
-        <label class="f">Login ID<input id="uLogin" autocapitalize="none" spellcheck="false" maxlength="40" required></label>
-        <label class="f"><span>Email <span class="hint">(optional)</span></span><input id="uEmail" type="email"></label>
-        <label class="f"><span>Mobile <span class="hint">(optional, for sign-in codes)</span></span><input id="uMobile" type="tel" placeholder="98765 43210"></label>
-        <label class="f">Role<select id="uRole"><option value="member">Member</option><option value="admin">Admin</option></select></label>
-        <label class="f">Temporary password<input id="uPw" type="text" minlength="10" required></label>
+      <div class="banner err" id="conflict" hidden>
+        <span id="conflictMsg"></span><button type="button" id="conflictReload">Reload latest</button>
       </div>
-      <div><button class="primary" type="submit">Add user</button></div>
-      <div class="msg" id="userMsg"></div>
-      <div id="userCreds" hidden></div>
-    </form>
-  </section>
-  <section class="panel" id="auditPanel">
-    <h2>Recent activity</h2>
-    <div class="tbl"><table id="auditTable"></table></div>
-  </section>
-</div>
 
-<div class="wrap view" id="viewAccount" hidden>
-  <section class="panel" style="max-width:520px">
-    <h2>Your account</h2>
-    <dl class="kv" id="acctInfo"></dl>
-    <h2 class="mt12">Mobile and email <span class="hint">for signing in with a one-time code</span></h2>
-    <div id="acctContacts"></div>
-    <h2 class="mt12">Change password</h2>
-    <form class="stack" id="pwForm" novalidate>
-      <label class="f" id="pwCurRow">Current password<input id="pwCur" type="password" autocomplete="current-password"></label>
-      <label class="f">New password (at least 10 characters)<input id="pwNew" type="password" autocomplete="new-password" minlength="10" required></label>
-      <div><button class="primary" type="submit">Save password</button></div>
-      <div class="msg" id="pwMsg"></div>
-    </form>
-  </section>
-</div>
-
-
-<div class="wrap view" id="viewEditor" hidden>
-  <header>
-    <div>
-      <h1 id="edTitle">Voyage</h1>
-      <div class="sub" id="subline"></div>
-    </div>
-    <div class="actions">
-      <span class="toast" id="toast" role="status"></span>
-      <span class="save-state" id="saveState"></span>
-      <label class="chk"><select id="vStatus" aria-label="Status"><option value="draft">Draft</option><option value="final">Final</option></select></label>
-      <button id="btnBack" type="button">All voyages</button>
-      <button id="btnCopy" type="button">Copy statement</button>
-      <button id="btnExcel" class="primary" type="button">Export to Excel</button>
-    </div>
-  </header>
-  <div class="banner warn ro-banner" id="roBanner" hidden>View only. Your role cannot change voyages; you can still work on the statement of facts below.</div>
-  <div class="banner err" id="conflict" hidden><span id="conflictMsg"></span><button type="button" id="conflictReload">Reload latest</button></div>
-
-  <div class="voy">
-    <section class="panel">
-      <h2>Voyage &amp; charter party</h2>
-      <div class="grid">
-        <label class="f">Vessel<input id="vessel" data-v="vessel" placeholder="MV ..."></label>
-        <label class="f">Charterers (A/c)<input id="charterers" data-v="charterers"></label>
-        <label class="f">Owners<input id="owners" data-v="owners"></label>
-        <label class="f">C/P date<input id="cpDate" data-v="cpDate" type="date"></label>
-        <label class="f">Cargo<input id="cargo" data-v="cargo" placeholder="e.g. Iron ore fines"></label>
-        <label class="f">Currency<input id="currency" data-v="currency" maxlength="4"></label>
-        <label class="f">Demurrage per day<input id="demRate" data-v="demRate" type="number" min="0" step="any"></label>
-        <label class="f">Despatch per day<input id="desRate" data-v="desRate" type="number" min="0" step="any"></label>
+      <div class="voy">
+        <section class="panel">
+          <h2>Voyage &amp; charter party</h2>
+          <div class="grid">
+            <label class="f">Vessel<input id="vessel" data-v="vessel" placeholder="MV ..." /></label>
+            <label class="f">Charterers (A/c)<input id="charterers" data-v="charterers" /></label>
+            <label class="f">Owners<input id="owners" data-v="owners" /></label>
+            <label class="f">C/P date<input id="cpDate" data-v="cpDate" type="date" /></label>
+            <label class="f">Cargo<input id="cargo" data-v="cargo" placeholder="e.g. Iron ore fines" /></label>
+            <label class="f">Currency<input id="currency" data-v="currency" maxlength="4" /></label>
+            <label class="f"
+              >Demurrage per day<input id="demRate" data-v="demRate" type="number" min="0" step="any"
+            /></label>
+            <label class="f"
+              >Despatch per day<input id="desRate" data-v="desRate" type="number" min="0" step="any"
+            /></label>
+          </div>
+          <div class="opts">
+            <label class="chk"><input id="hd" type="checkbox" data-v="hd" />Half despatch (HD)</label>
+            <label class="chk"
+              ><input id="odad" type="checkbox" data-v="odad" />Once on demurrage, always on demurrage</label
+            >
+            <span class="seg" role="radiogroup" aria-label="Calculation across ports">
+              <label><input type="radio" name="calcMode" id="cmSep" value="separate" />Ports separate</label>
+              <label><input type="radio" name="calcMode" id="cmRev" value="reversible" />Reversible</label>
+            </span>
+            <span class="hint" id="rateNote"></span>
+          </div>
+        </section>
+        <section class="panel" id="voyage"></section>
       </div>
-      <div class="opts">
-        <label class="chk"><input id="hd" type="checkbox" data-v="hd">Half despatch (HD)</label>
-        <label class="chk"><input id="odad" type="checkbox" data-v="odad">Once on demurrage, always on demurrage</label>
-        <span class="seg" role="radiogroup" aria-label="Calculation across ports">
-          <label><input type="radio" name="calcMode" id="cmSep" value="separate">Ports separate</label>
-          <label><input type="radio" name="calcMode" id="cmRev" value="reversible">Reversible</label>
-        </span>
-        <span class="hint" id="rateNote"></span>
+
+      <div>
+        <div class="tabs" id="tabs" role="tablist" aria-label="Ports"></div>
       </div>
-    </section>
-    <section class="panel" id="voyage"></section>
-  </div>
 
-  <div>
-    <div class="tabs" id="tabs" role="tablist" aria-label="Ports"></div>
-  </div>
+      <div class="layout">
+        <div class="col">
+          <section class="panel">
+            <h2>
+              Port &amp; laytime allowed
+              <span class="seg">
+                <label><input type="radio" name="mode" id="modeRate" value="rate" />By rate</label>
+                <label><input type="radio" name="mode" id="modeFixed" value="fixed" />Fixed</label>
+              </span>
+            </h2>
+            <div class="grid">
+              <label class="f">Port<input id="pname" data-p="name" /></label>
+              <label class="f"
+                >Operation<select id="op" data-p="op">
+                  <option>Loading</option>
+                  <option>Discharging</option>
+                </select></label
+              >
+              <label class="f" data-rate
+                >Quantity (MT)<input id="qty" data-p="qty" type="number" min="0" step="any"
+              /></label>
+              <label class="f" data-rate
+                >Rate (MT PWWD)<input id="rate" data-p="rate" type="number" min="0" step="any"
+              /></label>
+              <label class="f" data-fixed
+                >Fixed laytime (hours)<input id="fixedHours" data-p="fixedHours" type="number" min="0" step="any"
+              /></label>
+              <label class="f"
+                >Time allowed
+                <div class="derived" id="allowedOut">–</div></label
+              >
+            </div>
+          </section>
 
-  <div class="layout">
-    <div class="col">
+          <section class="panel">
+            <h2>Laytime terms</h2>
+            <div class="grid">
+              <label class="f"
+                >Terms
+                <select id="terms" data-p="terms">
+                  <option value="SHINC">SHINC – all days count</option>
+                  <option value="SHEX">SHEX – Sundays &amp; holidays excluded</option>
+                  <option value="SATPM SHEX">SAFSHEX – Sat 12:00 to Mon 08:00</option>
+                  <option value="SSHEX">SSHEX – Sat, Sun &amp; holidays excluded</option>
+                  <option value="FHEX">FHEX – Fridays &amp; holidays excluded</option>
+                  <option value="Custom">Custom window</option>
+                </select></label
+              >
+              <label class="f"
+                >Excluded from
+                <span class="pair"
+                  ><select class="dow" id="sDay" data-p="sDay"></select
+                  ><input id="sTime" data-p="sTime" type="time" /></span
+              ></label>
+              <label class="f"
+                >Counts again from
+                <span class="pair"
+                  ><select class="dow" id="eDay" data-p="eDay"></select
+                  ><input id="eTime" data-p="eTime" type="time" /></span
+              ></label>
+            </div>
+            <div class="chips mt12">
+              <span class="hint">Port holidays:</span>
+              <span class="chips" id="holList"></span>
+              <input id="holNew" type="date" class="auto" />
+              <button id="holAdd" type="button">Add</button>
+            </div>
+            <div class="hint mt8">Excluded periods apply even if used (EIU). Enter all times in port local time.</div>
+          </section>
+
+          <section class="panel">
+            <h2>Time sheet <button id="portDel" type="button" hidden>Remove this port</button></h2>
+            <div class="grid">
+              <label class="f">Vessel arrived<input id="arrived" data-p="arrived" type="datetime-local" /></label>
+              <label class="f">NOR tendered<input id="nor" data-p="nor" type="datetime-local" /></label>
+              <label class="f">NOR accepted<input id="norAcc" data-p="norAcc" type="datetime-local" /></label>
+              <label class="f">Vessel berthed<input id="berthed" data-p="berthed" type="datetime-local" /></label>
+              <label class="f">Commenced<input id="commenced" data-p="commenced" type="datetime-local" /></label>
+              <label class="f">Completed<input id="completed" data-p="completed" type="datetime-local" /></label>
+              <label class="f">Vessel sailed<input id="sailed" data-p="sailed" type="datetime-local" /></label>
+              <label class="f"
+                >Turn time (hours)<input id="turn" data-p="turn" type="number" min="0" step="any"
+              /></label>
+              <label class="f"
+                >Time to count from<input id="commenceOv" data-p="commenceOv" type="datetime-local"
+              /></label>
+              <label class="f">Estimated completion (ETC)<input id="etc" data-p="etc" type="datetime-local" /></label>
+              <label class="f"
+                >Port time zone<select id="tz" data-p="tz">
+                  <option value="+05:30">India (UTC+05:30)</option>
+                  <option value="+08:00">Singapore / China (UTC+08:00)</option>
+                  <option value="+04:00">UAE / Oman (UTC+04:00)</option>
+                  <option value="+03:00">Saudi / Qatar (UTC+03:00)</option>
+                  <option value="+05:00">Pakistan (UTC+05:00)</option>
+                  <option value="+06:00">Bangladesh (UTC+06:00)</option>
+                  <option value="+07:00">Vietnam / Thailand / Indonesia W (UTC+07:00)</option>
+                  <option value="+09:00">Japan / Korea (UTC+09:00)</option>
+                  <option value="+00:00">UTC</option>
+                  <option value="+01:00">UTC+01:00</option>
+                  <option value="+02:00">UTC+02:00</option>
+                  <option value="-03:00">Brazil (UTC−03:00)</option>
+                  <option value="-05:00">US East (UTC−05:00)</option>
+                </select></label
+              >
+            </div>
+            <div class="hint mt6" id="sofFieldNote" hidden>
+              Fields marked <span class="from-sof-tag">SOF</span> come from the statement of facts below. Change them
+              there.
+            </div>
+            <div class="hint mt6">
+              Leave "Time to count from" blank to start at NOR tendered plus turn time. Completed is when laytime stops.
+            </div>
+          </section>
+
+          <section class="panel" id="rulesPanel">
+            <h2>
+              CP treatment of SOF reasons <span class="hint">how each stoppage counts under this charter party</span>
+            </h2>
+            <div class="tbl"><table id="rulesTable"></table></div>
+          </section>
+
+          <section class="panel">
+            <h2>Manual adjustments <span class="hint" id="exCount"></span></h2>
+            <p class="hint">
+              Extra not-to-count periods that are not part of the shared statement of facts. Stakeholders do not see
+              these.
+            </p>
+            <div class="btnrow">
+              <button id="exAdd" type="button">+ Add period</button>
+              <button id="exSort" type="button">Sort by time</button>
+              <button id="exClear" type="button">Clear all</button>
+            </div>
+            <div class="ex-list" id="exList"></div>
+          </section>
+        </div>
+
+        <div class="col sticky">
+          <section class="panel" id="portResult"></section>
+          <section class="panel">
+            <h2>Timeline</h2>
+            <div class="tl" id="tl"></div>
+            <div class="ticks" id="ticks"></div>
+            <div class="legend">
+              <span><i class="t-pre"></i>Turn time</span>
+              <span><i class="t-count"></i>Counting</span>
+              <span><i class="t-half"></i>Half time</span>
+              <span><i class="t-excl"></i>Not to count</span>
+              <span><i class="t-dem"></i>Demurrage</span>
+              <span><i class="t-demx"></i>Demurrage stopped</span>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="sofHost"></div>
+
       <section class="panel">
-        <h2>Port &amp; laytime allowed
-          <span class="seg">
-            <label><input type="radio" name="mode" id="modeRate" value="rate">By rate</label>
-            <label><input type="radio" name="mode" id="modeFixed" value="fixed">Fixed</label>
-          </span>
-        </h2>
-        <div class="grid">
-          <label class="f">Port<input id="pname" data-p="name"></label>
-          <label class="f">Operation<select id="op" data-p="op"><option>Loading</option><option>Discharging</option></select></label>
-          <label class="f" data-rate>Quantity (MT)<input id="qty" data-p="qty" type="number" min="0" step="any"></label>
-          <label class="f" data-rate>Rate (MT PWWD)<input id="rate" data-p="rate" type="number" min="0" step="any"></label>
-          <label class="f" data-fixed>Fixed laytime (hours)<input id="fixedHours" data-p="fixedHours" type="number" min="0" step="any"></label>
-          <label class="f">Time allowed<div class="derived" id="allowedOut">–</div></label>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Laytime terms</h2>
-        <div class="grid">
-          <label class="f">Terms
-            <select id="terms" data-p="terms">
-              <option value="SHINC">SHINC – all days count</option>
-              <option value="SHEX">SHEX – Sundays &amp; holidays excluded</option>
-              <option value="SATPM SHEX">SAFSHEX – Sat 12:00 to Mon 08:00</option>
-              <option value="SSHEX">SSHEX – Sat, Sun &amp; holidays excluded</option>
-              <option value="FHEX">FHEX – Fridays &amp; holidays excluded</option>
-              <option value="Custom">Custom window</option>
-            </select></label>
-          <label class="f">Excluded from
-            <span class="pair"><select class="dow" id="sDay" data-p="sDay"></select><input id="sTime" data-p="sTime" type="time"></span></label>
-          <label class="f">Counts again from
-            <span class="pair"><select class="dow" id="eDay" data-p="eDay"></select><input id="eTime" data-p="eTime" type="time"></span></label>
-        </div>
-        <div class="chips mt12">
-          <span class="hint">Port holidays:</span>
-          <span class="chips" id="holList"></span>
-          <input id="holNew" type="date" class="auto">
-          <button id="holAdd" type="button">Add</button>
-        </div>
-        <div class="hint mt8">Excluded periods apply even if used (EIU). Enter all times in port local time.</div>
-      </section>
-
-      <section class="panel">
-        <h2>Time sheet <button id="portDel" type="button" hidden>Remove this port</button></h2>
-        <div class="grid">
-          <label class="f">Vessel arrived<input id="arrived" data-p="arrived" type="datetime-local"></label>
-          <label class="f">NOR tendered<input id="nor" data-p="nor" type="datetime-local"></label>
-          <label class="f">NOR accepted<input id="norAcc" data-p="norAcc" type="datetime-local"></label>
-          <label class="f">Vessel berthed<input id="berthed" data-p="berthed" type="datetime-local"></label>
-          <label class="f">Commenced<input id="commenced" data-p="commenced" type="datetime-local"></label>
-          <label class="f">Completed<input id="completed" data-p="completed" type="datetime-local"></label>
-          <label class="f">Vessel sailed<input id="sailed" data-p="sailed" type="datetime-local"></label>
-          <label class="f">Turn time (hours)<input id="turn" data-p="turn" type="number" min="0" step="any"></label>
-          <label class="f">Time to count from<input id="commenceOv" data-p="commenceOv" type="datetime-local"></label>
-          <label class="f">Estimated completion (ETC)<input id="etc" data-p="etc" type="datetime-local"></label>
-          <label class="f">Port time zone<select id="tz" data-p="tz"><option value="+05:30">India (UTC+05:30)</option><option value="+08:00">Singapore / China (UTC+08:00)</option><option value="+04:00">UAE / Oman (UTC+04:00)</option><option value="+03:00">Saudi / Qatar (UTC+03:00)</option><option value="+05:00">Pakistan (UTC+05:00)</option><option value="+06:00">Bangladesh (UTC+06:00)</option><option value="+07:00">Vietnam / Thailand / Indonesia W (UTC+07:00)</option><option value="+09:00">Japan / Korea (UTC+09:00)</option><option value="+00:00">UTC</option><option value="+01:00">UTC+01:00</option><option value="+02:00">UTC+02:00</option><option value="-03:00">Brazil (UTC−03:00)</option><option value="-05:00">US East (UTC−05:00)</option></select></label>
-        </div>
-        <div class="hint mt6" id="sofFieldNote" hidden>Fields marked <span class="from-sof-tag">SOF</span> come from the statement of facts below. Change them there.</div>
-        <div class="hint mt6">Leave "Time to count from" blank to start at NOR tendered plus turn time. Completed is when laytime stops.</div>
-      </section>
-
-      <section class="panel" id="rulesPanel">
-        <h2>CP treatment of SOF reasons <span class="hint">how each stoppage counts under this charter party</span></h2>
-        <div class="tbl"><table id="rulesTable"></table></div>
-      </section>
-
-      <section class="panel">
-        <h2>Manual adjustments <span class="hint" id="exCount"></span></h2>
-        <p class="hint">Extra not-to-count periods that are not part of the shared statement of facts. Stakeholders do not see these.</p>
-        <div class="btnrow">
-          <button id="exAdd" type="button">+ Add period</button>
-          <button id="exSort" type="button">Sort by time</button>
-          <button id="exClear" type="button">Clear all</button>
-        </div>
-        <div class="ex-list" id="exList"></div>
+        <h2>Laytime calculation</h2>
+        <div class="sheet-head"><dl id="stmtHead"></dl></div>
+        <div class="tbl" id="stmtWrap"><table id="stmt"></table></div>
+        <dl class="sheet-foot" id="stmtFoot"></dl>
       </section>
     </div>
 
-    <div class="col sticky">
-      <section class="panel" id="portResult"></section>
-      <section class="panel">
-        <h2>Timeline</h2>
-        <div class="tl" id="tl"></div>
-        <div class="ticks" id="ticks"></div>
-        <div class="legend">
-          <span><i class="t-pre"></i>Turn time</span>
-          <span><i class="t-count"></i>Counting</span>
-          <span><i class="t-half"></i>Half time</span>
-          <span><i class="t-excl"></i>Not to count</span>
-          <span><i class="t-dem"></i>Demurrage</span>
-          <span><i class="t-demx"></i>Demurrage stopped</span>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <div id="sofHost"></div>
-
-  <section class="panel">
-    <h2>Laytime calculation</h2>
-    <div class="sheet-head"><dl id="stmtHead"></dl></div>
-    <div class="tbl" id="stmtWrap"><table id="stmt"></table></div>
-    <dl class="sheet-foot" id="stmtFoot"></dl>
-  </section>
-</div>
-
-
-<script src="/shared/engine.js"></script>
-<script src="/shared/statement.js"></script>
-<script src="/shared/codes.js"></script>
-<script src="/shared/sof.js"></script>
-<script src="/js/api.js"></script>
-<script src="/js/sofpanel.js"></script>
-<script src="/js/editor.js"></script>
-<script src="/js/main.js"></script>
-</body>
+    <script src="/shared/engine.js"></script>
+    <script src="/shared/statement.js"></script>
+    <script src="/shared/codes.js"></script>
+    <script src="/shared/sof.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/sofpanel.js"></script>
+    <script src="/js/editor.js"></script>
+    <script src="/js/main.js"></script>
+  </body>
 </html>

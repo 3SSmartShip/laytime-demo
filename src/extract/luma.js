@@ -38,10 +38,19 @@ const SCHEMA = {
       type: 'object',
       description: 'Only for charter parties / recaps',
       properties: {
-        vessel: { type: 'string' }, charterers: { type: 'string' }, owners: { type: 'string' }, cargo: { type: 'string' },
-        cpDate: { type: 'string', description: 'YYYY-MM-DD' }, qty: { type: 'number' }, rate: { type: 'number', description: 'MT per day' },
-        terms: { enum: ['SHINC', 'SHEX', 'SATPM SHEX', 'SSHEX', 'FHEX'] }, turnTimeHours: { type: 'number' },
-        demRate: { type: 'number' }, desRate: { type: 'number' }, hd: { type: 'boolean' }, odad: { type: 'boolean' },
+        vessel: { type: 'string' },
+        charterers: { type: 'string' },
+        owners: { type: 'string' },
+        cargo: { type: 'string' },
+        cpDate: { type: 'string', description: 'YYYY-MM-DD' },
+        qty: { type: 'number' },
+        rate: { type: 'number', description: 'MT per day' },
+        terms: { enum: ['SHINC', 'SHEX', 'SATPM SHEX', 'SSHEX', 'FHEX'] },
+        turnTimeHours: { type: 'number' },
+        demRate: { type: 'number' },
+        desRate: { type: 'number' },
+        hd: { type: 'boolean' },
+        odad: { type: 'boolean' },
       },
     },
     warnings: { type: 'array', items: { type: 'string' } },
@@ -71,10 +80,20 @@ async function parseResponse(res) {
   const text = await res.text();
   if (!res.ok) throw new Error(`Luma returned ${res.status}: ${text.slice(0, 200)}`);
   let j;
-  try { j = JSON.parse(text); } catch { throw new Error('Luma did not return JSON.'); }
+  try {
+    j = JSON.parse(text);
+  } catch {
+    throw new Error('Luma did not return JSON.');
+  }
   // Some APIs wrap a JSON answer as a string; unwrap it.
   for (const k of ['data', 'result', 'output', 'answer']) {
-    if (typeof j[k] === 'string') { try { j[k] = JSON.parse(j[k]); } catch { /* leave as is */ } }
+    if (typeof j[k] === 'string') {
+      try {
+        j[k] = JSON.parse(j[k]);
+      } catch {
+        /* leave as is */
+      }
+    }
   }
   return j;
 }
@@ -91,7 +110,9 @@ async function extract(args) {
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('Luma took too long to answer.');
     throw e;
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 module.exports = { extract, SCHEMA, INSTRUCTIONS };

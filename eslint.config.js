@@ -19,8 +19,11 @@ module.exports = [
       globals: {
         ...globals.browser,
         Api: 'readonly',
+        Codes: 'readonly',
         Editor: 'readonly',
         Engine: 'readonly',
+        Sof: 'readonly',
+        SofPanel: 'readonly',
         Statement: 'readonly',
         makeSample: 'readonly',
       },

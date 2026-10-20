@@ -9,7 +9,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U laytime -d laytime"]
+      test: ['CMD-SHELL', 'pg_isready -U laytime -d laytime']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -35,6 +35,8 @@ services:
       LUMA_API_URL: ${LUMA_API_URL:-}
       LUMA_API_KEY: ${LUMA_API_KEY:-}
       LUMA_TIMEOUT_MS: ${LUMA_TIMEOUT_MS:-120000}
+      EXTRACT_PROVIDER: ${EXTRACT_PROVIDER:-}
+      SESSION_HOURS: ${SESSION_HOURS:-12}
       OTP_SMS_PROVIDER: ${OTP_SMS_PROVIDER:-}
       OTP_EMAIL_PROVIDER: ${OTP_EMAIL_PROVIDER:-}
       OTP_TTL_MINUTES: ${OTP_TTL_MINUTES:-}
@@ -58,7 +60,7 @@ services:
       EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
       EMAIL_WEBHOOK_TOKEN: ${EMAIL_WEBHOOK_TOKEN:-}
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - '${APP_PORT:-3000}:3000'
 
 volumes:
   pgdata:

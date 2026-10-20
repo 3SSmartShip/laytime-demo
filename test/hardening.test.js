@@ -6,7 +6,6 @@ const { parseTrustProxy } = require('../src/config');
 const { assertSafeZip } = require('../src/extract/zipguard');
 const { zipOf } = require('./helpers/zip');
 
-
 test('TRUST_PROXY hop counts become numbers, so Express trusts the proxy', () => {
   assert.strictEqual(parseTrustProxy('1'), 1);
   assert.strictEqual(parseTrustProxy('2'), 2);
