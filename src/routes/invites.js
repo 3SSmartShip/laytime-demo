@@ -10,6 +10,7 @@ const { query, tx, audit } = require('../db');
 const { httpError, setSession, requireAuth } = require('../auth');
 const Codes = require('../../shared/codes');
 const LoginId = require('../loginId');
+const Perms = require('../permissions');
 
 const router = express.Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many attempts. Try again later.' } });
@@ -78,14 +79,19 @@ router.post('/accept', limiter, async (req, res, next) => {
 router.get('/mine', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT v.id, v.vessel, v.status, v.updated_at, v.summary, v.data->'ports' AS ports, t.name AS operator, p.party_role, p.can_see_commercials,
+      `SELECT v.id, v.vessel, v.status, v.updated_at, v.summary, v.data->'ports' AS ports, t.name AS operator, p.party_role, p.can_see_commercials, v.tenant_id,
               (SELECT count(*)::int FROM sof_events e WHERE e.voyage_id = v.id AND e.deleted_at IS NULL AND e.status = 'disputed') AS disputed,
               (SELECT count(*)::int FROM sof_events e WHERE e.voyage_id = v.id AND e.deleted_at IS NULL AND e.status = 'open') AS open
          FROM voyage_participants p JOIN voyages v ON v.id = p.voyage_id JOIN tenants t ON t.id = v.tenant_id
         WHERE p.user_id = $1 AND t.active ORDER BY v.updated_at DESC`, [req.user.id]);
+    const amounts = {};
+    for (const r of rows) {
+      const k = `${r.tenant_id}:${r.party_role}`;
+      if (!(k in amounts)) amounts[k] = (await Perms.effective({ query }, r.tenant_id, r.party_role)).amounts;
+    }
     res.json({ voyages: rows.map(r => ({ id: r.id, vessel: r.vessel, status: r.status, updatedAt: r.updated_at, operator: r.operator,
       party: Codes.PARTY_ROLES[r.party_role], ports: (r.ports || []).map(p => ({ name: p.name, op: p.op })), open: r.open, disputed: r.disputed,
-      summary: r.can_see_commercials ? r.summary : null })) });
+      summary: r.can_see_commercials && amounts[`${r.tenant_id}:${r.party_role}`] ? r.summary : null })) });
   } catch (e) { next(e); }
 });
 

@@ -133,7 +133,7 @@ router.post('/events/bulk', wrap(async (req, res) => {
 
 async function loadEvent(db, a, eid) {
   if (!uuid.safeParse(eid).success) throw httpError(404, 'Event not found.');
-  const { rows } = await db.query('SELECT * FROM sof_events WHERE id = $1 AND voyage_id = $2 AND deleted_at IS NULL', [eid, a.voyage.id]);
+  const { rows } = await db.query('SELECT * FROM sof_events WHERE id = $1 AND voyage_id = $2 AND deleted_at IS NULL FOR UPDATE', [eid, a.voyage.id]);
   if (!rows[0]) throw httpError(404, 'Event not found.');
   return rows[0];
 }
@@ -169,11 +169,16 @@ router.delete('/events/:eid', wrap(async (req, res) => {
 
 router.post('/events/:eid/review', wrap(async (req, res) => {
   const a = await access(req, 'sof_review');
-  const b = parse(z.object({ decision: z.enum(['confirm', 'dispute', 'comment']), comment: z.string().max(1000).optional().default('') }), req.body);
+  const b = parse(z.object({ decision: z.enum(['confirm', 'dispute', 'comment']), comment: z.string().max(1000).optional().default(''), version: z.number().int().optional() }), req.body);
   if (b.decision !== 'confirm' && !b.comment.trim()) throw httpError(400, b.decision === 'dispute' ? 'Say why you dispute this event.' : 'Write a comment.');
   await tx(async db => {
     const e = await loadEvent(db, a, req.params.eid);
-    if (b.decision === 'confirm' && e.author_id === req.user.id) throw httpError(400, 'Another party has to confirm your own event.');
+    if (b.version !== undefined && e.version !== b.version) throw httpError(409, 'This event was changed after you opened it. Check it again before you confirm or dispute.');
+    if (b.decision === 'confirm' && (e.author_id === req.user.id || e.author_party === a.party)) throw httpError(400, 'Another party has to confirm an event your side recorded.');
+    if (b.decision === 'confirm' && e.status === 'disputed' && !a.manage) {
+      const { rows: [last] } = await db.query(`SELECT party FROM event_reviews WHERE event_id = $1 AND decision = 'dispute' ORDER BY at DESC LIMIT 1`, [e.id]);
+      if (last && last.party !== a.party) throw httpError(403, 'This event is disputed. Only the party that disputed it, or the voyage operator, can confirm it now.');
+    }
     await db.query(`INSERT INTO event_reviews (event_id, user_id, party, decision, comment) VALUES ($1,$2,$3,$4,$5)`, [e.id, req.user.id, a.party, b.decision, b.comment.trim()]);
     if (b.decision !== 'comment') {
       await db.query(`UPDATE sof_events SET status = $1, updated_at = now() WHERE id = $2`, [b.decision === 'confirm' ? 'confirmed' : 'disputed', e.id]);
@@ -278,7 +283,7 @@ router.post('/participants/:pid/reset', wrap(async (req, res) => {
   const { rows: elsewhere } = await query(
     `SELECT 1 FROM voyage_participants p JOIN voyages v ON v.id = p.voyage_id WHERE p.user_id = $1 AND v.tenant_id <> $2 LIMIT 1`, [u.id, a.voyage.tenant_id]);
   if (elsewhere[0]) throw httpError(403, 'This login is also used on another organisation\'s voyages, so only the person can change its password: from Account, or by signing in with a code.');
-  await query('UPDATE users SET password_hash = $1, must_change_password = true WHERE id = $2', [await bcrypt.hash(b.password, 12), u.id]);
+  await query('UPDATE users SET password_hash = $1, must_change_password = true, session_version = session_version + 1 WHERE id = $2', [await bcrypt.hash(b.password, 12), u.id]);
   await audit({ query }, { tenantId: a.voyage.tenant_id, userId: req.user.id, voyageId: a.voyage.id, action: 'participant_password_reset', detail: { loginId: u.login_id } });
   res.json({ loginId: u.login_id });
 }));
@@ -320,7 +325,9 @@ const documentsAccess = (req, res, next) => access(req, 'documents').then(() => 
 
 router.post('/documents', documentsAccess, express.raw({ type: () => true, limit: '15mb' }), wrap(async (req, res) => {
   const a = req.access;
-  const filename = decodeURIComponent(req.get('X-Filename') || '').replace(/[\\/\r\n"]/g, '_').slice(0, 200);
+  let filename;
+  try { filename = decodeURIComponent(req.get('X-Filename') || ''); } catch { throw httpError(400, 'The file name could not be read.'); }
+  filename = filename.replace(/[\\/\r\n"]/g, '_').slice(0, 200);
   const ext = (filename.split('.').pop() || '').toLowerCase();
   if (!filename || !MIME[ext]) throw httpError(400, 'Upload a PDF, Excel, Word, CSV, text or image file.');
   if (!Buffer.isBuffer(req.body) || !req.body.length) throw httpError(400, 'The file is empty.');
@@ -336,6 +343,12 @@ router.post('/documents', documentsAccess, express.raw({ type: () => true, limit
   res.status(201).json({ id: rows[0].id });
 }));
 
+// Header values must be Latin-1: send an ASCII fallback plus the real name in RFC 5987 form.
+function contentDisposition(name) {
+  const ascii = name.normalize('NFKD').replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+}
+
 async function loadDoc(a, did, cols = 'id, port_id, filename, mime, doc_type, status, result, uploaded_by') {
   if (!uuid.safeParse(did).success) throw httpError(404, 'Document not found.');
   const { rows } = await query(`SELECT ${cols} FROM documents WHERE id = $1 AND voyage_id = $2`, [did, a.voyage.id]);
@@ -347,7 +360,7 @@ router.get('/documents/:did/file', wrap(async (req, res) => {
   const a = await access(req, 'documents');
   const d = await loadDoc(a, req.params.did, 'filename, mime, content, doc_type');
   res.setHeader('Content-Type', d.mime);
-  res.setHeader('Content-Disposition', `attachment; filename="${d.filename}"`);
+  res.setHeader('Content-Disposition', contentDisposition(d.filename));
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.end(d.content);
 }));
@@ -366,8 +379,10 @@ router.post('/documents/:did/apply', wrap(async (req, res) => {
   const b = parse(z.object({ events: z.array(z.number().int().min(0)).max(1000).default([]), terms: z.boolean().optional().default(false) }), req.body);
   const d = await loadDoc(a, req.params.did);
   if (d.status !== 'ready' && d.status !== 'applied') throw httpError(400, 'This document has not been read yet.');
-  const result = d.result || { events: [] };
   const out = await tx(async db => {
+    // Re-read under a lock so two apply clicks cannot add the same events twice.
+    const { rows: [locked] } = await db.query('SELECT result FROM documents WHERE id = $1 FOR UPDATE', [d.id]);
+    const result = locked.result || { events: [] };
     let added = 0; const skipped = [];
     for (const i of b.events) {
       const e = result.events[i];

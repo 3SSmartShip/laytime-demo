@@ -93,7 +93,7 @@ function create(root,ctx){
     root.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{expanded=expanded===b.dataset.exp?null:b.dataset.exp;render()});
     root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editing=b.dataset.edit;render();el('#sofForm').scrollIntoView({block:'center'})});
     root.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Confirm remove';return}act(()=>Api.del(`/api/v/${ctx.voyageId}/events/${b.dataset.rm}`),'Removed.')});
-    root.querySelectorAll('[data-rev]').forEach(b=>b.onclick=()=>{const [id,dec]=b.dataset.rev.split(':');const c=el(`#rc-${id}`);act(()=>Api.post(`/api/v/${ctx.voyageId}/events/${id}/review`,{decision:dec,comment:c?c.value:''}),dec==='confirm'?'Confirmed.':dec==='dispute'?'Disputed.':'Comment added.')});
+    root.querySelectorAll('[data-rev]').forEach(b=>b.onclick=()=>{const [id,dec]=b.dataset.rev.split(':');const c=el(`#rc-${id}`);const ev=S.events.find(x=>x.id===id);act(()=>Api.post(`/api/v/${ctx.voyageId}/events/${id}/review`,{decision:dec,comment:c?c.value:'',version:ev&&ev.version}),dec==='confirm'?'Confirmed.':dec==='dispute'?'Disputed.':'Comment added.')});
     if(P.documents)wireDocs(port);
     if(people)wirePeople();
     paintMsg();

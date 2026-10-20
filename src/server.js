@@ -51,7 +51,7 @@ function createApp() {
   app.use((err, req, res, next) => {
     if (err.type === 'entity.too.large') return res.status(413).json({ error: 'This voyage is too large to save.' });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'The request was not valid JSON.' });
-    if (err.code === '23505' && /login_id|email/.test(err.constraint || '')) return res.status(409).json({ error: 'That login ID or email is already in use.' });
+    if (err.code === '23505' && /login_id|email|mobile/.test(err.constraint || '')) return res.status(409).json({ error: 'That login ID, email or mobile number is already in use.' });
     const status = err.status || 500;
     if (status >= 500) console.error(err);
     res.status(status).json({ error: status >= 500 ? 'Something went wrong on the server. Try again.' : err.message, ...(err.extra || {}) });

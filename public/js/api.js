@@ -24,9 +24,11 @@ window.Api = (function () {
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'Download failed.'); }
     const blob = await r.blob();
     const cd = r.headers.get('content-disposition') || '';
-    const m = cd.match(/filename="([^"]+)"/);
+    const star = cd.match(/filename\*=UTF-8''([^;]+)/i), m = cd.match(/filename="([^"]+)"/);
+    let name = m ? m[1] : fallbackName;
+    try { if (star) name = decodeURIComponent(star[1]); } catch (e) {}
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = m ? m[1] : fallbackName;
+    a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }

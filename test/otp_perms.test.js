@@ -20,6 +20,10 @@ if (!url) {
 
   let base, server, gw;
   const outbox = [];
+  // Codes are sent after the API replies, so wait for the gateway to receive them.
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const delivered = async n => { for (let i = 0; i < 100 && outbox.length <= n; i++) await sleep(20); };
+  const settled = () => sleep(200); // for checks that nothing was sent
   const lastCode = to => { const m = [...outbox].reverse().find(x => x.to === to); return m && m.code; };
 
   class Client {
@@ -79,7 +83,9 @@ if (!url) {
 
   test('sign in with a code sent by SMS', async () => {
     const c = new Client();
+    const before = outbox.length;
     const r = await c.req('POST', '/api/auth/otp/request', { login: '9876543210' });
+    await delivered(before);
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.body.channel, 'sms');
     assert.strictEqual(r.body.sentTo, '+91••••••3210');
@@ -107,14 +113,18 @@ if (!url) {
 
   test('sign in with a code sent by email; stakeholders too', async () => {
     const c = new Client();
+    let before = outbox.length;
     await c.req('POST', '/api/auth/otp/request', { login: 'OPS@op.test' });
+    await delivered(before);
     const em = outbox.at(-1);
     assert.strictEqual(em.path, '/email');
     assert.strictEqual(em.to, 'ops@op.test');
     assert.match(em.subject, /code/);
     assert.strictEqual((await c.req('POST', '/api/auth/otp/verify', { login: 'ops@op.test', code: em.code })).status, 200);
     const s = new Client();
+    before = outbox.length;
     await s.req('POST', '/api/auth/otp/request', { login: '+6591234567' });
+    await delivered(before);
     const r = await s.req('POST', '/api/auth/otp/verify', { login: '+65 9123 4567', code: lastCode('+6591234567') });
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.body.user.role, 'external');
@@ -124,6 +134,7 @@ if (!url) {
   test('unknown numbers get the same answer and no message', async () => {
     const n = outbox.length;
     const r = await new Client().req('POST', '/api/auth/otp/request', { login: '9000000000' });
+    await settled();
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.body.sentTo, '+91••••••0000');
     assert.strictEqual(outbox.length, n);
@@ -134,7 +145,9 @@ if (!url) {
     await pool.query("UPDATE otp_codes SET created_at = created_at - interval '2 minutes'");
     const n = outbox.length;
     await new Client().req('POST', '/api/auth/otp/request', { login: '9876543210' });
+    await delivered(n);
     await new Client().req('POST', '/api/auth/otp/request', { login: '9876543210' });
+    await settled();
     assert.strictEqual(outbox.length, n + 1, 'second request within 60 s does not send');
     const code = outbox.at(-1).code, bad = code === '123456' ? '654321' : '123456';
     const c = new Client();
@@ -146,6 +159,7 @@ if (!url) {
     await pool.query("UPDATE otp_codes SET created_at = created_at - interval '2 minutes'");
     const m = outbox.length;
     await new Client().req('POST', '/api/auth/otp/request', { login: '9876543210' });
+    await settled();
     assert.strictEqual(outbox.length, m, 'no code for a disabled account');
     await op.req('PATCH', `/api/admin/users/${memberId}`, { active: true });
   });

@@ -2,7 +2,7 @@
 (function(){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const money=(v,c)=>`${c||'USD'} ${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(v,c)=>`${esc(c||'USD')} ${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const when=s=>s?new Date(s).toLocaleString([], {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'–';
 let me=null,tenants=[];
 const can=k=>!!(me&&me.perms&&me.perms[k]);

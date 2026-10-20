@@ -83,7 +83,8 @@ async function extract(args) {
   const url = process.env.LUMA_API_URL;
   if (!url) throw new Error('LUMA_API_URL is not set.');
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), parseInt(process.env.LUMA_TIMEOUT_MS || '120000', 10));
+  const timeoutMs = parseInt(process.env.LUMA_TIMEOUT_MS || '120000', 10);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs > 0 ? timeoutMs : 120000);
   try {
     const res = await fetch(url, { ...buildRequest(args), signal: ctrl.signal });
     return await parseResponse(res);

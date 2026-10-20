@@ -3,7 +3,8 @@
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const E=window.Engine,St=window.Statement;
-const money=(v,c)=>`${c||'USD'} ${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const money=(v,c)=>`${esc(c||'USD')} ${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 let me=null,panel=null,state=null,active=0;
 
 function show(v){['viewList','viewAccount','viewVoyage'].forEach(x=>$(x).hidden=x!==v);$('navList').classList.toggle('on',v!=='viewAccount');$('navAccount').classList.toggle('on',v==='viewAccount')}
@@ -26,13 +27,13 @@ function route(){
   if(me&&me.mustChangePassword&&me.signedInWith!=='otp'&&location.hash!=='#/account'){location.hash='#/account';return}
   const h=location.hash||'#/';
   if(panel&&!h.startsWith('#/voyage/')){panel.stop();panel=null}
-  if(h.startsWith('#/voyage/'))return openVoyage(h.slice(9));
+  if(h.startsWith('#/voyage/')&&UUID.test(h.slice(9)))return openVoyage(h.slice(9));
   if(h==='#/account')return show('viewAccount');
   return showList();
 }
 $('btnLogout').onclick=async()=>{await Api.post('/api/auth/logout');location.href='/login.html'};
 $('btnBackList').onclick=()=>{if(me&&me.role!=='external')location.href='/#/voyages';else location.hash='#/'};
-$('btnPortalExcel').onclick=()=>{const id=(location.hash.match(/^#\/voyage\/(.+)$/)||[])[1];if(id)Api.download(`/api/v/${id}/export.xlsx`,'laytime.xlsx').catch(()=>{})};
+$('btnPortalExcel').onclick=()=>{const id=(location.hash.match(/^#\/voyage\/(.+)$/)||[])[1];if(id&&UUID.test(id))Api.download(`/api/v/${id}/export.xlsx`,'laytime.xlsx').catch(()=>{})};
 
 async function showList(){
   show('viewList');

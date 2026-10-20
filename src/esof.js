@@ -22,7 +22,8 @@ async function loadEvents(db, voyageId, { withReviews = false } = {}) {
 
 // Recalculate and store the voyage summary after its data or SOF changed.
 async function refreshSummary(db, voyageId) {
-  const { rows } = await db.query('SELECT data FROM voyages WHERE id = $1', [voyageId]);
+  // The lock makes concurrent writers take turns, so each one sees the others' committed events.
+  const { rows } = await db.query('SELECT data FROM voyages WHERE id = $1 FOR UPDATE', [voyageId]);
   if (!rows[0]) return;
   const events = await loadEvents(db, voyageId);
   const { summary } = compute(rows[0].data, events);

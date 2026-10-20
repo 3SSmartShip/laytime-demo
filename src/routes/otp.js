@@ -44,11 +44,9 @@ router.post('/request', reqLimiter, async (req, res, next) => {
     const u = await findUser(t);
     // Same answer whether or not the account exists.
     const out = { ok: true, channel: t.channel, sentTo: t.masked, resendIn: Otp.RESEND_SECONDS };
-    if (u) {
-      try { await Otp.issue({ query }, { userId: u.id, purpose: 'login', channel: t.channel, target: t.value }); }
-      catch (e) { console.error('otp send failed', e.message); throw httpError(502, 'We could not send the code just now. Try again, or sign in with your password.'); }
-    }
+    // Sent after replying, so response time and provider errors do not reveal who has an account.
     res.json(out);
+    if (u) Otp.issue({ query }, { userId: u.id, purpose: 'login', channel: t.channel, target: t.value }).catch(e => console.error('otp send failed', e.message));
   } catch (e) { next(e); }
 });
 

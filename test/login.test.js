@@ -149,4 +149,22 @@ if (!url) {
     assert.ok(parts.length >= 2);
     parts.forEach(p => { assert.strictEqual(p.login_id, undefined); assert.strictEqual(p.email, undefined); });
   });
+
+  test('changing a password signs out other sessions, but not this one', async () => {
+    const here = new Client(), other = new Client();
+    await here.login('meera', 'my-own-password'); await other.login('meera', 'my-own-password');
+    assert.strictEqual((await here.req('POST', '/api/auth/password', { current: 'my-own-password', next: 'meera-new-password' })).status, 200);
+    assert.strictEqual((await here.req('GET', '/api/auth/me')).status, 200);
+    assert.strictEqual((await other.req('GET', '/api/auth/me')).status, 401);
+  });
+
+  test('ten failed sign-ins lock that login ID, whatever the IP', async () => {
+    // earlier tests used up most of this IP's sign-ins; start a fresh window so only the per-account limit is tested
+    const { limiters } = require('../src/routes/auth');
+    for (const ip of ['127.0.0.1', '::ffff:127.0.0.1', '::1']) limiters.ip.resetKey(ip);
+    for (let i = 0; i < 10; i++) await new Client().req('POST', '/api/auth/login', { login: 'bala', password: 'wrong-password' });
+    const r = await new Client().req('POST', '/api/auth/login', { login: 'bala', password: 'beta-password-12' });
+    assert.strictEqual(r.status, 429);
+    assert.strictEqual((await new Client().login('asha.alpha', 'alpha-password-1')).status, 200, 'other logins are not affected');
+  });
 }

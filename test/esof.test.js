@@ -165,6 +165,21 @@ if (!url) {
     assert.strictEqual((await agent.req('DELETE', `/api/v/${vid}/events/${rainId}`)).status, 403, 'confirmed events cannot be removed by the author');
   });
 
+  test('reviews: stale confirms are refused, and a side cannot confirm its own events', async () => {
+    const r = await agent.req('POST', `/api/v/${vid}/events`, { portId: portDP, code: 'RAIN', from: '2013-09-23T16:00', to: '2013-09-23T17:00', remark: 'Rain' });
+    const seen = (await owner.req('GET', `/api/v/${vid}`)).body.events.find(x => x.id === r.body.id);
+    await agent.req('PATCH', `/api/v/${vid}/events/${r.body.id}`, { portId: portDP, code: 'RAIN', from: '2013-09-23T16:00', to: '2013-09-23T18:00', remark: 'Rain', version: seen.version });
+    const stale = await owner.req('POST', `/api/v/${vid}/events/${r.body.id}/review`, { decision: 'confirm', version: seen.version });
+    assert.strictEqual(stale.status, 409, 'the owner saw 1 hour, the event now says 2');
+    const fresh = (await owner.req('GET', `/api/v/${vid}`)).body.events.find(x => x.id === r.body.id);
+    assert.strictEqual((await owner.req('POST', `/api/v/${vid}/events/${r.body.id}/review`, { decision: 'dispute', comment: 'Rain stopped 17:00', version: fresh.version })).status, 200);
+    assert.strictEqual((await steve.req('POST', `/api/v/${vid}/events/${r.body.id}/review`, { decision: 'confirm', version: fresh.version })).status, 403,
+      'a third party cannot wipe the owner\'s dispute by confirming');
+    const mine = await op.req('POST', `/api/v/${vid}/events`, { portId: portDP, code: 'RAIN', from: '2013-09-23T19:00', to: '2013-09-23T19:30' });
+    const colleague = new Client(); await colleague.login('ops@op.test', 'ops-password-1');
+    assert.strictEqual((await colleague.req('POST', `/api/v/${vid}/events/${mine.body.id}/review`, { decision: 'confirm' })).status, 400, 'the operator side cannot confirm its own event');
+  });
+
   test('pasted SOF lines become events', async () => {
     const r = await agent.req('POST', `/api/v/${vid}/events/bulk`, { portId: portDP, text: '23.09.2013 12:30 13:00 Shifting berth\n23.09.2013 15:15 Completed discharge\nnonsense' });
     assert.strictEqual(r.body.created, 2);
@@ -215,6 +230,15 @@ if (!url) {
     assert.strictEqual(d.status, 'failed');
     assert.match(d.error, /too large/);
     assert.strictEqual((await agent.req('GET', `/api/v/${vid}`)).status, 200);
+  });
+
+  test('files with non-Latin names download with their real name', async () => {
+    const up = await agent.req('POST', `/api/v/${vid}/documents`, Buffer.from('a,b'), { 'X-Filename': encodeURIComponent('SOF – Paradip 港.csv'), 'X-Port-Id': portDP });
+    assert.strictEqual(up.status, 201);
+    const r = await fetch(`${base}/api/v/${vid}/documents/${up.body.id}/file`, { headers: { Cookie: agent.cookie } });
+    assert.strictEqual(r.status, 200);
+    assert.match(r.headers.get('content-disposition'), /filename\*=UTF-8''SOF%20%E2%80%93%20Paradip%20%E6%B8%AF\.csv/);
+    assert.strictEqual((await agent.req('POST', `/api/v/${vid}/documents`, Buffer.from('a'), { 'X-Filename': '%E2%80', 'X-Port-Id': portDP })).status, 400, 'broken %-encoding is a 400, not a 500');
   });
 
   test('people outside the voyage cannot upload to it', async () => {

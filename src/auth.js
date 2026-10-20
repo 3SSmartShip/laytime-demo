@@ -12,7 +12,7 @@ function httpError(status, message) {
 }
 
 function setSession(res, user, { amr = 'pwd' } = {}) {
-  const token = jwt.sign({ sub: user.id, tid: user.tenant_id, role: user.role, amr }, config.jwtSecret, { expiresIn: `${config.sessionHours}h` });
+  const token = jwt.sign({ sub: user.id, tid: user.tenant_id, role: user.role, amr, sv: user.session_version || 1 }, config.jwtSecret, { expiresIn: `${config.sessionHours}h` });
   res.cookie(COOKIE, token, {
     httpOnly: true, sameSite: 'lax', secure: config.cookieSecure,
     maxAge: config.sessionHours * 3600 * 1000, path: '/',
@@ -31,12 +31,14 @@ async function requireAuth(req, res, next) {
     let payload;
     try { payload = jwt.verify(token, config.jwtSecret); } catch { throw httpError(401, 'Your session has expired. Please sign in again.'); }
     const { rows } = await query(
-      `SELECT u.id, u.tenant_id, u.login_id, u.email, u.mobile, u.name, u.role, u.active, u.must_change_password,
+      `SELECT u.id, u.tenant_id, u.login_id, u.email, u.mobile, u.name, u.role, u.active, u.must_change_password, u.session_version,
               t.name AS tenant_name, t.active AS tenant_active
          FROM users u LEFT JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1`, [payload.sub]);
     const u = rows[0];
     if (!u || !u.active) throw httpError(401, 'This account is disabled.');
     if (u.tenant_id && !u.tenant_active) throw httpError(401, 'This organisation is disabled.');
+    // A password change or reset ends every other session (sessions from before this check count as version 1).
+    if ((payload.sv || 1) !== u.session_version) throw httpError(401, 'Your password was changed. Please sign in again.');
     // A temporary password must be replaced first; signing in with a one-time code already proves who it is.
     if (u.must_change_password && payload.amr !== 'otp' && !/^\/api\/auth\/(me|password)$/.test(req.originalUrl.split('?')[0])) {
       const e = httpError(403, 'Choose your own password before continuing.');

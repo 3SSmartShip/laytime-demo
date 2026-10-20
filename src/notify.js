@@ -7,7 +7,7 @@ const config = require('./config');
 const smsProvider = () => (process.env.OTP_SMS_PROVIDER || (config.isProd ? 'none' : 'console')).toLowerCase();
 const emailProvider = () => (process.env.OTP_EMAIL_PROVIDER || (config.isProd ? 'none' : 'console')).toLowerCase();
 const appName = () => process.env.APP_NAME || 'Laytime Calculator';
-const ttlMin = () => parseInt(process.env.OTP_TTL_MINUTES || '5', 10);
+const ttlMin = () => { const v = parseInt(process.env.OTP_TTL_MINUTES || '5', 10); return v > 0 ? v : 5; };
 
 function enabled() {
   const ok = p => p && p !== 'none' && !(p === 'console' && config.isProd);
@@ -75,6 +75,7 @@ function smtp() {
     transport = nodemailer.createTransport({
       host: process.env.SMTP_HOST, port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
+      connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000,
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
     });
   }

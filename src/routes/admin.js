@@ -91,7 +91,8 @@ router.patch('/users/:id', requireRole('admin', 'superadmin'), requirePerm('user
       }
       const { rows: up } = await db.query(
         `UPDATE users SET name = COALESCE($1,name), role = COALESCE($2,role), active = COALESCE($3,active),
-                password_hash = COALESCE($4,password_hash), must_change_password = CASE WHEN $4::text IS NULL THEN must_change_password ELSE true END
+                password_hash = COALESCE($4,password_hash), must_change_password = CASE WHEN $4::text IS NULL THEN must_change_password ELSE true END,
+                session_version = CASE WHEN $4::text IS NULL THEN session_version ELSE session_version + 1 END
           WHERE id = $5 RETURNING *`, [b.name ?? null, b.role ?? null, b.active ?? null, hash, id]);
       await audit(db, { tenantId: tid, userId: req.user.id, action: 'user_updated', detail: { id, ...b, password: b.password ? 'reset' : undefined } });
       return up[0];

@@ -12,10 +12,15 @@ const router = express.Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false,
   message: { error: 'Too many sign-in attempts. Try again in 15 minutes.' } });
 
+// Failed sign-ins per login ID, whatever the IP. Successful sign-ins do not count.
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, skipSuccessfulRequests: true,
+  keyGenerator: req => 'login:' + String((req.body && (req.body.login || req.body.email)) || '').trim().toLowerCase(),
+  message: { error: 'Too many failed sign-ins for this login. Try again in 15 minutes, or sign in with a code.' } });
+
 const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 10);
 
 
-router.post('/login', loginLimiter, async (req, res, next) => {
+router.post('/login', loginLimiter, accountLimiter, async (req, res, next) => {
   try {
     const body = z.object({ login: z.string().trim().min(1).max(200).optional(), email: z.string().trim().max(200).optional(), password: z.string().min(1).max(200) }).safeParse(req.body);
     const login = body.success && (body.data.login || body.data.email);
@@ -46,10 +51,15 @@ router.post('/password', requireAuth, async (req, res, next) => {
     const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
     // After signing in with a one-time code, a person may set a password without the old one.
     if (req.amr !== 'otp' && !(await bcrypt.compare(body.data.current, rows[0].password_hash))) throw httpError(400, 'Current password is incorrect.');
-    await query('UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2', [await bcrypt.hash(body.data.next, 12), req.user.id]);
+    const { rows: [sv] } = await query(
+      'UPDATE users SET password_hash = $1, must_change_password = false, session_version = session_version + 1 WHERE id = $2 RETURNING session_version',
+      [await bcrypt.hash(body.data.next, 12), req.user.id]);
     await audit({ query }, { tenantId: req.user.tenant_id, userId: req.user.id, action: 'password_changed' });
+    // Other devices are signed out; this one gets a fresh session.
+    setSession(res, { ...req.user, session_version: sv.session_version }, { amr: req.amr });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
 
 module.exports = router;
+module.exports.limiters = { ip: loginLimiter, account: accountLimiter }; // tests reset these

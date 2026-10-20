@@ -5,7 +5,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const E=window.Engine,S=window.Statement;
 const {computeVoyage,parseSOF,allowedHours,fmtDur,fmtLong,fmtDT,fmtHM,fmtDHM,hhmm,parseDT,num,TERM_LABEL,PRESETS}=E;
 const DOWS=E.DOW;
-const money=(v,c)=>`${c||'USD'} ${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(v,c)=>`${esc(c||'USD')} ${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const fmtNum=S.fmtNum;
 
 const newId=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
